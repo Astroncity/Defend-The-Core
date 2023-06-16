@@ -9,7 +9,9 @@
 #define screenWidth 1920
 #define screenHeight 1080
 #define MAX_ENEMIES 100
-#define MAX_BULLETS 1000
+#define MAX_BULLETS 10000
+#define PELLET_COUNT 5
+#define SHOTGUN_PELLET_SPREAD 4
 
 
 
@@ -23,7 +25,7 @@
  * todo make a settings menu
  * todo make a pause menu
  * todo make a game over screen--DONE
- * todo find way to save settings/data
+ * todo find way to save settings/data--DONE
  *---------------------------------------------**/
 
 
@@ -53,6 +55,7 @@ typedef struct Button{
     Color color;
     Color borderColor;
     void (*func)();
+    int fontSize;
 }Button;
 
 typedef struct HealthBar{
@@ -116,7 +119,7 @@ typedef struct Bullet{
 
 void drawMainMenu();
 Button initButton(int x, int y, int width, int height, int borderThickness, 
-                  int textOffset, const char* text, Color color, void (*func)());
+                  int textOffset, const char* text, Color color, int fontSize, void (*func)());
 void handleButton(Button* button);
 void initMainMenu();
 void storeButtonFunc();
@@ -138,6 +141,18 @@ void handleBullets();
 void handleCoreHealthBar();
 void deathScreen();
 void resetGame();
+void savePlayerData();
+void loadPlayerData();
+void upgradeDamage();
+void upgradeHealth();
+void handleStore();
+void initStoreMenu();
+void purchaseShotgun();
+void shootBasic(Vector2 center, double angleBetweenMouse);
+void shootShotgun(Vector2 center, double angleBetweenMouse);
+void translateTrig(Trig* trig, double x, double y);
+void clamp(double* value, double max);
+void scaleDifficulty(double runtime);
 
 
 
@@ -146,12 +161,18 @@ void resetGame();
 Button playButton;
 Button storeButton;
 Button settingsButton;
+Button upgradeHealthButton;
+Button upgradeDamageButton;
+Button shotgunButton;
+
 bool darkMode = false;
 Vector2 mousePos;
 Color backgroundColor;
 
 GameState gameState = MAIN_MENU;
 double deltaTime = 0;
+double runtime = 0;
+double difficulty = 1;
 
 Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
                 {(Vector2){screenWidth / 2 - 16, screenHeight / 2}, (Vector2){screenWidth / 2, screenHeight / 2 + 32}, (Vector2){screenWidth / 2 + 16, screenHeight / 2}}};
@@ -161,12 +182,20 @@ Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
 int enemyCount = 0;
 int bulletCount = 0;
+double upgradeDamageCost;
+double upgradeHealthCost;
+int shotgunCost = 500;
+bool shotgunPurchased = false;
 
 int main(void){
     InitWindow(screenWidth, screenHeight, "raylib [core] example - keyboard input");
-    SetTargetFPS(144);    
+    SetTargetFPS(144);  
+
+    loadPlayerData();  
 
     initMainMenu();
+    initStoreMenu();
+    SetExitKey(KEY_F12);
     if(darkMode){
         backgroundColor = BLACK;
     }
@@ -177,12 +206,15 @@ int main(void){
     player.healthBar = (HealthBar){player.health, player.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, GREEN, RED};
     player.hitbox = (Rectangle){0, 0, 28, 28};
     core.healthBar = (HealthBar){core.health, core.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 128, 256, 4}, SKYBLUE, RED};
+    upgradeDamageCost = player.damage * 10;
+    upgradeHealthCost = player.maxHealth * 0.5;
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
         BeginDrawing();
         ClearBackground(backgroundColor);
         deltaTime = GetFrameTime();
+        runtime += deltaTime;
 
         switch(gameState){
             case MAIN_MENU:
@@ -197,8 +229,10 @@ int main(void){
                 spawnEnemies();
                 handleBullets();
                 handleCoreHealthBar();
+                scaleDifficulty(runtime);
                 break;
             case STORE:
+                handleStore();
                 break;
             case SETTINGS:
                 break;
@@ -209,24 +243,25 @@ int main(void){
                 break;
         }
         DrawFPS(10, 50);
-
+        DrawLine(player.center.x, player.center.y, mousePos.x, mousePos.y, RED);
         DrawText(TextFormat("Coins: %d", player.coins), 10, 10, 20, GREEN);
         EndDrawing();
 
     }
     CloseWindow();
+    savePlayerData();
 
     return 0;
 }
 
 void initMainMenu(){
-    playButton = initButton(screenWidth/2 - 187, screenHeight/2 - 190, 374, 130, 10, 40, "Play", WHITE, playButtonFunc);
-    storeButton = initButton(screenWidth/2 - 187, screenHeight/2, 374, 130, 10, 45, "Store", WHITE, storeButtonFunc);
-    settingsButton = initButton(screenWidth/2 - 187, screenHeight/2 + 190, 374, 130, 10, 95, "Settings", WHITE, settingsButtonFunc);
+    playButton = initButton(screenWidth/2 - 187, screenHeight/2 - 190, 374, 130, 10, 40, "Play", WHITE, 50, playButtonFunc);
+    storeButton = initButton(screenWidth/2 - 187, screenHeight/2, 374, 130, 10, 45, "Store", WHITE, 50, storeButtonFunc);
+    settingsButton = initButton(screenWidth/2 - 187, screenHeight/2 + 190, 374, 130, 10, 95, "Settings", WHITE, 50, settingsButtonFunc);
 }
 
 Button initButton(int x, int y, int width, int height, int borderThickness,
-                  int textOffset, const char* text, Color color, void (*func)()){
+                  int textOffset, const char* text, Color color,  int fontSize, void (*func)()){
     Button button;
     button.x = x;
     button.y = y;
@@ -243,6 +278,7 @@ Button initButton(int x, int y, int width, int height, int borderThickness,
     button.borderY = button.y - button.borderThickness;
     button.borderWidth = button.width + (2 * button.borderThickness);
     button.borderHeight = button.height + (2 * button.borderThickness);
+    button.fontSize = fontSize;
     return button;
 }
 void handleButton(Button* button){
@@ -261,9 +297,9 @@ void handleButton(Button* button){
 
     int centerX = button -> x + button -> width / 2;
     int centerY = button -> y + button -> height / 2;
-    int startX = centerX - strlen(button -> text) * 50 / 2;
-    int startY = centerY - 50 / 2;
-    DrawText(button -> text, (startX + button -> textOffset), startY, 50, BLACK);
+    int startX = centerX - strlen(button -> text) * button -> fontSize / 2;
+    int startY = centerY - button -> fontSize / 2;
+    DrawText(button -> text, (startX + button -> textOffset), startY, button -> fontSize, BLACK);
 
     if (CheckCollisionPointRec(mousePos, (Rectangle){button -> borderX, button -> borderY, button -> borderWidth, button -> borderHeight})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
@@ -291,7 +327,6 @@ void settingsButtonFunc(){
 }
 
 void handlePlayer(){
-    bool canShoot = true;
     Vector2 center = {(player.trig.a.x + player.trig.b.x + player.trig.c.x) / 3, (player.trig.a.y + player.trig.b.y + player.trig.c.y) / 3};
     player.center = center;
     double angleBetweenMouse = atan2(mousePos.y - center.y, mousePos.x - center.x);
@@ -312,36 +347,18 @@ void handlePlayer(){
     }   
 
     if(IsKeyDown(KEY_W)){
-        player.trig.a.y += sin(player.direction) * player.speed * deltaTime;
-        player.trig.b.y += sin(player.direction) * player.speed * deltaTime;
-        player.trig.c.y += sin(player.direction) * player.speed * deltaTime;
-        player.trig.a.x += cos(player.direction) * player.speed * deltaTime;
-        player.trig.b.x += cos(player.direction) * player.speed * deltaTime;
-        player.trig.c.x += cos(player.direction) * player.speed * deltaTime;
+        translateTrig(&player.trig, cos(player.direction) * player.speed * deltaTime, sin(player.direction) * player.speed * deltaTime);
     }
     if(IsKeyDown(KEY_S)){
-        player.trig.a.y -= sin(player.direction) * player.speed * deltaTime;
-        player.trig.b.y -= sin(player.direction) * player.speed * deltaTime;
-        player.trig.c.y -= sin(player.direction) * player.speed * deltaTime;
-        player.trig.a.x -= cos(player.direction) * player.speed * deltaTime;
-        player.trig.b.x -= cos(player.direction) * player.speed * deltaTime;
-        player.trig.c.x -= cos(player.direction) * player.speed * deltaTime;
+        translateTrig(&player.trig, -cos(player.direction) * player.speed * deltaTime, -sin(player.direction) * player.speed * deltaTime);
     }
     if(IsKeyDown(KEY_A)){
-        player.trig.a.y -= sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.b.y -= sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.c.y -= sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.a.x -= cos(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.b.x -= cos(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.c.x -= cos(player.direction + degToRad(90)) * player.speed * deltaTime;
+        translateTrig(&player.trig, -cos(player.direction + degToRad(90) * player.speed * deltaTime),
+                      -sin(player.direction + degToRad(90) * player.speed * deltaTime));
     }
     if(IsKeyDown(KEY_D)){
-        player.trig.a.y += sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.b.y += sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.c.y += sin(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.a.x += cos(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.b.x += cos(player.direction + degToRad(90)) * player.speed * deltaTime;
-        player.trig.c.x += cos(player.direction + degToRad(90)) * player.speed * deltaTime;
+        translateTrig(&player.trig, cos(player.direction + degToRad(90)) * player.speed * deltaTime,
+                      sin(player.direction + degToRad(90)) * player.speed * deltaTime);
     }
 
     player.hitbox.x = player.center.x - player.hitbox.width / 2;
@@ -350,7 +367,30 @@ void handlePlayer(){
     player.healthBar.rect.x = player.center.x - player.healthBar.rect.width / 2;
     player.healthBar.rect.y = player.center.y - player.healthBar.rect.height - 10;
 
+    if(shotgunPurchased){
+        shootShotgun(center, angleBetweenMouse);
+    }
+    else{
+        shootBasic(center, angleBetweenMouse);
+    }
 
+
+    if(player.health <= 0){
+        gameState = DEAD;
+    }
+    rotateVector2(&player.trig.a, angDiff, center);
+    rotateVector2(&player.trig.b, angDiff, center);
+    rotateVector2(&player.trig.c, angDiff, center);
+    player.direction = angleBetweenMouse;
+    DrawTriangle(player.trig.a, player.trig.b, player.trig.c, (Color){193, 225, 193, 255});
+    DrawRectangle(player.healthBar.rect.x, player.healthBar.rect.y,
+                  player.healthBar.rect.width, player.healthBar.rect.height, player.healthBar.backgroundColor);
+    DrawRectangle(player.healthBar.rect.x, player.healthBar.rect.y,
+                  player.healthBar.rect.width * (player.health / player.maxHealth), player.healthBar.rect.height, player.healthBar.barColor);
+}   
+
+void shootBasic(Vector2 center, double angleBetweenMouse){
+    bool canShoot = true;
 
     if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot){
         canShoot = false;
@@ -367,20 +407,29 @@ void handlePlayer(){
     if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
         canShoot = true;
     }
+}
 
-    if(player.health <= 0){
-        gameState = DEAD;
+void shootShotgun(Vector2 center, double angleBetweenMouse){
+    bool canShoot = true;
+
+    if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot){
+        canShoot = false;
+        for(int i = 0; i < PELLET_COUNT; i++){
+            Bullet bullet;
+            bullet.pos.x = center.x;
+            bullet.pos.y = center.y;
+            bullet.direction = angleBetweenMouse - degToRad(PELLET_COUNT + i * SHOTGUN_PELLET_SPREAD) + degToRad(PELLET_COUNT * SHOTGUN_PELLET_SPREAD / 2) + degToRad(PELLET_COUNT*0.6);
+            bullet.speed = 750;
+            bullet.active = true;
+            bullet.index = bulletCount;
+            bullets[bulletCount] = bullet;
+            bulletCount++;
+        }
     }
-    rotateVector2(&player.trig.a, angDiff, center);
-    rotateVector2(&player.trig.b, angDiff, center);
-    rotateVector2(&player.trig.c, angDiff, center);
-    player.direction = angleBetweenMouse;
-    DrawTriangle(player.trig.a, player.trig.b, player.trig.c, (Color){193, 225, 193, 255});
-    DrawRectangle(player.healthBar.rect.x, player.healthBar.rect.y,
-                  player.healthBar.rect.width, player.healthBar.rect.height, player.healthBar.backgroundColor);
-    DrawRectangle(player.healthBar.rect.x, player.healthBar.rect.y,
-                  player.healthBar.rect.width * (player.health / player.maxHealth), player.healthBar.rect.height, player.healthBar.barColor);
-}   
+    if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
+        canShoot = true;
+    }
+}
 
 void rotateVector2(Vector2* vector, float angle, Vector2 center){
     // rotate all points of the triangle around its center
@@ -422,18 +471,22 @@ void handleCore(){
 }
 
 void spawnEnemies(){
-    if(spawnTimer > 1){
+    if(spawnTimer > 1 / (difficulty / 2)){
         Enemy enemy;
         enemy.pos.x = GetRandomValue(0, screenWidth);
         enemy.pos.y = GetRandomValue(0, screenHeight);
         enemy.speed = GetRandomValue(75, 225);
         enemy.color = RED;
         enemy.coinValue = GetRandomValue(1, 5);
+        enemy.coinValue *= difficulty;
         enemy.alive = true;
         enemy.damage = GetRandomValue(10, 25);
+        enemy.damage *= difficulty;
         enemy.index = enemyCount;
         enemy.health = 50;
+        enemy.health *= difficulty;
         enemy.maxHealth = 50;
+        enemy.maxHealth *= difficulty;
         enemy.radius = 10;
         
         enemy.healthBar = (HealthBar){enemy.health, enemy.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, RED, BLACK};
@@ -473,8 +526,8 @@ void handleEnemies(){
         ENEMIES[i].pos.x += cos(angleBetweenCore) * ENEMIES[i].speed * deltaTime;
         ENEMIES[i].pos.y += sin(angleBetweenCore) * ENEMIES[i].speed * deltaTime;
 
-        ENEMIES[i].healthBar.rect.x = ENEMIES[i].pos.x - ENEMIES[i].radius;
-        ENEMIES[i].healthBar.rect.y = ENEMIES[i].pos.y - ENEMIES[i].radius;
+        ENEMIES[i].healthBar.rect.x = ENEMIES[i].pos.x - ENEMIES[i].radius - ENEMIES[i].healthBar.rect.width / 2;
+        ENEMIES[i].healthBar.rect.y = ENEMIES[i].pos.y - ENEMIES[i].radius - ENEMIES[i].healthBar.rect.height / 2;
 
         if (CheckCollisionCircleRec(ENEMIES[i].pos, ENEMIES[i].radius, core.rect)){
             destroyEnemy(i);
@@ -485,7 +538,7 @@ void handleEnemies(){
             destroyEnemy(i);
             player.health -= ENEMIES[i].damage;
         }
-        DrawCircle(ENEMIES[i].pos.x, ENEMIES[i].pos.y, ENEMIES[i].radius, ENEMIES[i].color);
+        DrawCircle(ENEMIES[i].pos.x, ENEMIES[i].pos.y, ENEMIES[i].radius, (Color){25 * difficulty, 0, 0, 255});
         DrawRectangle(ENEMIES[i].healthBar.rect.x, ENEMIES[i].healthBar.rect.y,
                   ENEMIES[i].healthBar.rect.width, ENEMIES[i].healthBar.rect.height, ENEMIES[i].healthBar.backgroundColor);
         DrawRectangle(ENEMIES[i].healthBar.rect.x, ENEMIES[i].healthBar.rect.y,
@@ -612,5 +665,126 @@ void resetGame(){
 }
 
 void savePlayerData(){
+    FILE *file;
+    file = fopen("resources/playerData.txt", "w");
+    fprintf(file, "%d\n", player.coins);
+    fprintf(file, "%f\n", player.damage);
+    fprintf(file, "%f\n", player.maxHealth);
+    fprintf(file, "%d\n", shotgunPurchased);
+    fclose(file);
+}
+void loadPlayerData(){
+    //read player coins from a file ending in .test
+    int tempBool;
+    FILE *file;
+    if((file = fopen("resources/playerData.txt", "r"))!=NULL)
+        {
+            fscanf(file, "%d\n", &player.coins);
+            fscanf(file, "%lf\n", &player.damage);
+            fscanf(file, "%lf\n", &player.maxHealth);
+            fscanf(file, "%d\n", &tempBool);
+            fclose(file);
+            shotgunPurchased = tempBool;
+        }
+    else
+        {
+            file = fopen("resources/playerData.txt", "w");
+            fprintf(file, "%d\n", 0);
+            fprintf(file, "%d\n", 1);
+            fprintf(file, "%d\n", 100);
+            fprintf(file, "%d\n", 0);
+            player.coins = 10000;
+            player.damage = 10;
+            player.maxHealth = 100;
+            shotgunPurchased = 0;
+            fclose(file);
+        }
+}
 
+
+void initStoreMenu(){
+    upgradeDamageButton = initButton(200, screenHeight/2 - 190, 374, 130, 10, 110, "Upgrade Damage", WHITE, 40, upgradeDamage);
+    upgradeHealthButton = initButton(200, screenHeight/2 - 50, 374, 130, 10, 110, "Upgrade Health", WHITE, 40, upgradeHealth);
+    shotgunButton = initButton(1200, screenHeight/2 - 190, 200, 130, 10, 60, "Shotgun", WHITE, 40, purchaseShotgun);
+}
+
+void handleStore(){
+    int upgradeDamageCostInt = (int)upgradeDamageCost;
+    int upgradeHealthCostInt = (int)upgradeHealthCost;
+    
+    handleButton(&upgradeDamageButton);
+    DrawText(TextFormat("Price: %d", upgradeDamageCostInt), upgradeDamageButton.x + upgradeDamageButton.width + 30, upgradeDamageButton.y + upgradeDamageButton.height / 2 - 10, 40, BLACK);
+    
+    handleButton(&upgradeHealthButton);
+    DrawText(TextFormat("Price: %d", upgradeHealthCostInt), upgradeHealthButton.x + upgradeHealthButton.width + 30, upgradeHealthButton.y + upgradeHealthButton.height / 2 - 10, 40, BLACK);
+    
+    if(shotgunPurchased == false){
+        handleButton(&shotgunButton);
+        DrawText(TextFormat("Price: %d", shotgunCost), shotgunButton.x + shotgunButton.width + 30, shotgunButton.y + shotgunButton.height / 2 - 10, 40, BLACK);
+    }
+    if(IsKeyPressed(KEY_ESCAPE)){
+        gameState = MAIN_MENU;
+    }
+}
+
+void upgradeDamage(){
+    if(player.coins >= upgradeDamageCost){
+        player.coins -= upgradeDamageCost;
+        player.damage += 1;
+        upgradeDamageCost += 10;
+        printf("Damage upgraded to %f\n", player.damage);
+    }
+    else{
+        printf("Not enough coins\n");
+    }
+}
+
+void upgradeHealth(){
+    if(player.coins >= upgradeHealthCost){
+        player.coins -= upgradeHealthCost;
+        player.maxHealth += 10;
+        player.health += 10;
+        upgradeHealthCost += 0.5;
+        printf("Health upgraded to %f\n", player.maxHealth);
+    }
+    else{
+        printf("Not enough coins\n");
+    }
+}
+
+void purchaseShotgun(){
+    if(player.coins >= shotgunCost){
+        player.coins -= shotgunCost;
+        shotgunPurchased = true;
+        printf("Shotgun purchased\n");
+    }
+    else{
+        printf("Not enough coins\n");
+    }
+}
+
+void translateTrig(Trig* trig, double x, double y){
+    trig -> a.x += x;
+    trig -> a.y += y;
+    trig -> b.x += x;
+    trig -> b.y += y;
+    trig -> c.x += x;
+    trig -> c.y += y;
+}
+void scaleDifficulty(double runtime){
+    double base_difficulty = 1.0;
+    double difficulty_increase_rate = 0.01;
+    double max_difficulty = 10.0;
+    
+    difficulty = base_difficulty + difficulty_increase_rate * runtime;
+    
+    clamp(&difficulty, max_difficulty);
+    printf("Difficulty: %f\n", difficulty);
+    
+}
+
+void clamp(double* value, double max){
+    if(*value > max){
+        *value = max;
+    }
 }
