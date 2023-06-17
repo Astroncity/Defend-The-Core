@@ -1,4 +1,5 @@
 #include "include/raylib.h"
+#include "main.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,9 +20,9 @@
 /**----------------------------------------------
  * todo                  TODO
  * todo make healthbar system--DONE
- * todo improve spawning so that it starts at the edge of the screen
+ * todo improve spawning--DONE
  * todo add audio
- * todo make a store
+ * todo make a store--DONE
  * todo make a settings menu
  * todo make a pause menu
  * todo make a game over screen--DONE
@@ -30,129 +31,7 @@
 
 
 
-typedef enum GameState{
-        MAIN_MENU,
-        PLAYING,
-        STORE,
-        SETTINGS,
-        PAUSED,
-        DEAD
-}GameState;
 
-typedef struct Button{
-    int x;
-    int y;
-    int width;
-    int height;
-    int borderX;
-    int borderY;
-    int borderWidth;
-    int borderHeight;
-    int borderThickness;
-    int textOffset;
-    double scale;
-    char* text;
-    Color color;
-    Color borderColor;
-    void (*func)();
-    int fontSize;
-}Button;
-
-typedef struct HealthBar{
-    double value;
-    double max;
-    Rectangle rect;
-    Color barColor;
-    Color backgroundColor;
-}HealthBar;
-
-typedef struct Trig{
-    Vector2 a;
-    Vector2 b;
-    Vector2 c;
-}Trig;
-
-typedef struct Player{
-    double health;
-    double maxHealth;
-    double speed;
-    double damage;
-    double attackSpeed;
-    double direction;
-    int coins;
-    Trig trig;
-    HealthBar healthBar;
-    Vector2 center;
-    Rectangle hitbox;
-}Player;
-
-typedef struct Core{
-    double health;
-    double maxHealth;
-    Rectangle rect;
-    Color color;
-    HealthBar healthBar;
-    Vector2 center;
-}Core;
-
-typedef struct Enemy{
-    Vector2 pos;
-    double health;
-    double maxHealth;
-    double speed;
-    double damage;
-    Color color;
-    bool alive;
-    int index;
-    int coinValue;
-    HealthBar healthBar;
-    int radius;
-}Enemy;
-
-typedef struct Bullet{
-    double speed;
-    double direction;
-    Vector2 pos;
-    bool active;
-    int index;
-}Bullet;
-
-void drawMainMenu();
-Button initButton(int x, int y, int width, int height, int borderThickness, 
-                  int textOffset, const char* text, Color color, int fontSize, void (*func)());
-void handleButton(Button* button);
-void initMainMenu();
-void storeButtonFunc();
-void playButtonFunc();
-void settingsButtonFunc();
-void handlePlayer();
-void rotateVector2(Vector2* vector, float angle, Vector2 center);
-double degToRad(double angle);
-double radToDeg(double angle);
-void handleCore();
-double coreBonusTimer;
-void handleEnemies();
-int lastUsedEnemySlot();
-void spawnEnemies();
-double spawnTimer;
-void destroyEnemy(int enemyIndex);
-int lastUsedBulletSlot();
-void handleBullets();
-void handleCoreHealthBar();
-void deathScreen();
-void resetGame();
-void savePlayerData();
-void loadPlayerData();
-void upgradeDamage();
-void upgradeHealth();
-void handleStore();
-void initStoreMenu();
-void purchaseShotgun();
-void shootBasic(Vector2 center, double angleBetweenMouse);
-void shootShotgun(Vector2 center, double angleBetweenMouse);
-void translateTrig(Trig* trig, double x, double y);
-void clamp(double* value, double max);
-void scaleDifficulty(double runtime);
 
 
 
@@ -164,6 +43,7 @@ Button settingsButton;
 Button upgradeHealthButton;
 Button upgradeDamageButton;
 Button shotgunButton;
+Button sniperTowerButton;
 
 bool darkMode = false;
 Vector2 mousePos;
@@ -180,12 +60,23 @@ Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
 Core core = {500, 500, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 16, 32, 32}, BLUE};
 Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
+SniperTower sniperTowers[50];
+double sniperTowerTimer = 0;
+Tower currentTower;
+int sniperTowerCost = 100;
+int sniperTowerCount = 0;
 int enemyCount = 0;
 int bulletCount = 0;
 double upgradeDamageCost;
 double upgradeHealthCost;
 int shotgunCost = 500;
 bool shotgunPurchased = false;
+bool leftMouseDown = false;
+
+
+
+
+bool drawGhost = false;
 
 int main(void){
     InitWindow(screenWidth, screenHeight, "raylib [core] example - keyboard input");
@@ -211,6 +102,7 @@ int main(void){
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
+        if(IsMouseButtonUp(MOUSE_LEFT_BUTTON)) leftMouseDown = false;
         BeginDrawing();
         ClearBackground(backgroundColor);
         deltaTime = GetFrameTime();
@@ -218,9 +110,9 @@ int main(void){
 
         switch(gameState){
             case MAIN_MENU:
-                handleButton(&playButton);
-                handleButton(&storeButton);
-                handleButton(&settingsButton);
+                handleButton(&playButton, (Tower)NONE);
+                handleButton(&storeButton, (Tower)NONE);
+                handleButton(&settingsButton, (Tower)NONE);
                 break;
             case PLAYING:
                 handleCore();
@@ -228,8 +120,8 @@ int main(void){
                 handleEnemies();
                 spawnEnemies();
                 handleBullets();
-                handleCoreHealthBar();
                 scaleDifficulty(runtime);
+                handleSniperTowers();
                 break;
             case STORE:
                 handleStore();
@@ -240,6 +132,13 @@ int main(void){
                 break;
             case DEAD:
                 deathScreen();
+                break;
+            case PLACING_TOWER:
+                handleSniperTowers();
+                placeTower();
+                if(drawGhost){
+                    DrawRectangle(mousePos.x - 25, mousePos.y - 25, 50, 50, (Color){255, 0, 0, 100});
+                }
                 break;
         }
         DrawFPS(10, 50);
@@ -258,6 +157,20 @@ void initMainMenu(){
     playButton = initButton(screenWidth/2 - 187, screenHeight/2 - 190, 374, 130, 10, 40, "Play", WHITE, 50, playButtonFunc);
     storeButton = initButton(screenWidth/2 - 187, screenHeight/2, 374, 130, 10, 45, "Store", WHITE, 50, storeButtonFunc);
     settingsButton = initButton(screenWidth/2 - 187, screenHeight/2 + 190, 374, 130, 10, 95, "Settings", WHITE, 50, settingsButtonFunc);
+}
+
+
+void playButtonFunc(){
+    gameState = PLAYING;
+    printf("Play button pressed\n");
+}
+void storeButtonFunc(){
+    gameState = STORE;
+    printf("Store button pressed\n");
+}
+void settingsButtonFunc(){
+    gameState = SETTINGS;
+    printf("Settings button pressed\n");
 }
 
 Button initButton(int x, int y, int width, int height, int borderThickness,
@@ -281,7 +194,7 @@ Button initButton(int x, int y, int width, int height, int borderThickness,
     button.fontSize = fontSize;
     return button;
 }
-void handleButton(Button* button){
+void handleButton(Button* button, Tower tower){
     // border
     DrawRectangle(button -> borderX,
                   button -> borderY, 
@@ -303,7 +216,7 @@ void handleButton(Button* button){
 
     if (CheckCollisionPointRec(mousePos, (Rectangle){button -> borderX, button -> borderY, button -> borderWidth, button -> borderHeight})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-            button -> func();
+            (tower == NONE) ? button -> func() : button -> func(tower);
         }
         button -> borderColor = BLUE;
     }
@@ -311,19 +224,6 @@ void handleButton(Button* button){
         button -> borderColor = BLACK;
     }
 
-}
-
-void playButtonFunc(){
-    gameState = PLAYING;
-    printf("Play button pressed\n");
-}
-void storeButtonFunc(){
-    gameState = STORE;
-    printf("Store button pressed\n");
-}
-void settingsButtonFunc(){
-    gameState = SETTINGS;
-    printf("Settings button pressed\n");
 }
 
 void handlePlayer(){
@@ -467,7 +367,17 @@ void handleCore(){
         player.coins += 15;
         printf("Core bonus! +15 coins\n");
     }
+
+    core.healthBar.rect.x = core.center.x - core.healthBar.rect.width / 2;
+    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 10;
+
+                  
     DrawRectangle(core.rect.x, core.rect.y, core.rect.width, core.rect.height, core.color);
+
+    DrawRectangle(core.healthBar.rect.x, core.healthBar.rect.y,
+                  core.healthBar.rect.width, core.healthBar.rect.height, core.healthBar.backgroundColor);
+    DrawRectangle(core.healthBar.rect.x, core.healthBar.rect.y,
+                  core.healthBar.rect.width * (core.health / core.maxHealth), core.healthBar.rect.height, core.healthBar.barColor);
 }
 
 void spawnEnemies(){
@@ -521,6 +431,7 @@ void handleEnemies(){
         else if(angleBetweenCore > 2 * PI){
             angleBetweenCore -= 2 * PI;
         }
+        ENEMIES[i].direction = angleBetweenCore;
 
 
         ENEMIES[i].pos.x += cos(angleBetweenCore) * ENEMIES[i].speed * deltaTime;
@@ -611,9 +522,6 @@ void handleBullets(){
             destroyBullet(i);
         }
 
-        if(bullets[i].active == false){
-            break;
-        }
         for(int j = 0; j < MAX_ENEMIES; j++){
             if(ENEMIES[j].alive == false){
                 break;
@@ -624,15 +532,6 @@ void handleBullets(){
             }
         }
     }
-}
-void handleCoreHealthBar(){
-    core.healthBar.rect.x = core.center.x - core.healthBar.rect.width / 2;
-    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 10;
-
-    DrawRectangle(core.healthBar.rect.x, core.healthBar.rect.y,
-                  core.healthBar.rect.width, core.healthBar.rect.height, core.healthBar.backgroundColor);
-    DrawRectangle(core.healthBar.rect.x, core.healthBar.rect.y,
-                  core.healthBar.rect.width * (core.health / core.maxHealth), core.healthBar.rect.height, core.healthBar.barColor);
 }
 
 void deathScreen(){
@@ -662,6 +561,7 @@ void resetGame(){
     }
     enemyCount = 0;
     bulletCount = 0;
+    difficulty = 1;
 }
 
 void savePlayerData(){
@@ -706,20 +606,24 @@ void initStoreMenu(){
     upgradeDamageButton = initButton(200, screenHeight/2 - 190, 374, 130, 10, 110, "Upgrade Damage", WHITE, 40, upgradeDamage);
     upgradeHealthButton = initButton(200, screenHeight/2 - 50, 374, 130, 10, 110, "Upgrade Health", WHITE, 40, upgradeHealth);
     shotgunButton = initButton(1200, screenHeight/2 - 190, 200, 130, 10, 60, "Shotgun", WHITE, 40, purchaseShotgun);
+    sniperTowerButton = initButton(1100, screenHeight/2, 300, 130, 10, 105, "Sniper Tower", WHITE, 40, purchaseSniperTower);
 }
 
 void handleStore(){
     int upgradeDamageCostInt = (int)upgradeDamageCost;
     int upgradeHealthCostInt = (int)upgradeHealthCost;
     
-    handleButton(&upgradeDamageButton);
+    handleButton(&upgradeDamageButton, (Tower)NONE);
     DrawText(TextFormat("Price: %d", upgradeDamageCostInt), upgradeDamageButton.x + upgradeDamageButton.width + 30, upgradeDamageButton.y + upgradeDamageButton.height / 2 - 10, 40, BLACK);
     
-    handleButton(&upgradeHealthButton);
+    handleButton(&upgradeHealthButton, (Tower)NONE);
     DrawText(TextFormat("Price: %d", upgradeHealthCostInt), upgradeHealthButton.x + upgradeHealthButton.width + 30, upgradeHealthButton.y + upgradeHealthButton.height / 2 - 10, 40, BLACK);
     
+    handleButton(&sniperTowerButton, (Tower)SNIPER);
+    DrawText(TextFormat("Price: %d", sniperTowerCost), sniperTowerButton.x + sniperTowerButton.width + 30, sniperTowerButton.y + sniperTowerButton.height / 2 - 10, 40, BLACK);
+
     if(shotgunPurchased == false){
-        handleButton(&shotgunButton);
+        handleButton(&shotgunButton, (Tower)NONE);
         DrawText(TextFormat("Price: %d", shotgunCost), shotgunButton.x + shotgunButton.width + 30, shotgunButton.y + shotgunButton.height / 2 - 10, 40, BLACK);
     }
     if(IsKeyPressed(KEY_ESCAPE)){
@@ -779,7 +683,6 @@ void scaleDifficulty(double runtime){
     difficulty = base_difficulty + difficulty_increase_rate * runtime;
     
     clamp(&difficulty, max_difficulty);
-    printf("Difficulty: %f\n", difficulty);
     
 }
 
@@ -787,4 +690,122 @@ void clamp(double* value, double max){
     if(*value > max){
         *value = max;
     }
+}
+
+void spawnSniperTower(){
+    SniperTower tower;
+    tower.rect.x = mousePos.x - 25;
+    tower.rect.y = mousePos.y - 25;
+    tower.rect.width = 50;
+    tower.rect.height = 50;
+    sniperTowers[sniperTowerCount] = tower;
+    sniperTowerCount++;
+}
+
+void placeTower(){
+    drawGhost = true;
+    printf("ran\n");
+    switch(currentTower){
+        case SNIPER:
+            if(player.coins >= sniperTowerCost){
+                if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
+                    player.coins -= sniperTowerCost;
+                    spawnSniperTower();
+                    gameState = STORE;
+                    drawGhost = false;
+                    printf("Sniper tower placed\n");
+                    break;
+                }
+            }
+            else{
+                printf("Not enough coins\n");
+                gameState = STORE;
+                drawGhost = false;
+            }
+            break;
+        case NONE:
+            printf("No tower selected\n");
+            gameState = STORE;
+            drawGhost = false;
+            break;
+    }
+}
+
+void handleSniperTowers(){
+    sniperTowerTimer += GetFrameTime();
+    for(int i = 0; i < sniperTowerCount; i++){
+        double shortestDistance;
+        shortestDistance = 1000000;
+        Enemy closestEnemy;
+        for(int i = 0; i < MAX_ENEMIES; i++){
+            if(ENEMIES[i].alive == false){
+                break;
+            }
+            double distanceToEnemy = distance((Vector2){sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25},
+                                              (Vector2){ENEMIES[i].pos.x, ENEMIES[i].pos.y});
+            if(distanceToEnemy < shortestDistance){
+                shortestDistance = distanceToEnemy;
+                closestEnemy = ENEMIES[i];
+            }
+        }   
+        double framesToEnemy = shortestDistance / (1000 * deltaTime);
+        if(framesToEnemy > 0){
+            closestEnemy.pos.x += cos(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
+            closestEnemy.pos.y += sin(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
+        }
+        double angleBetweenEnemy = atan2(closestEnemy.pos.y - sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2, closestEnemy.pos.x - sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2);
+        if(radToDeg(angleBetweenEnemy) < 0){
+            angleBetweenEnemy += degToRad(360);
+        }
+        else if(radToDeg(angleBetweenEnemy) > 360){
+            angleBetweenEnemy -= degToRad(360);
+        }
+        DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
+        DrawLine(0, sniperTowers[i].rect.y + 25, screenWidth, sniperTowers[i].rect.y + 25, (Color){0, 0, 255, 255});
+        // create a bullet with the angle between the enemy and the tower
+    if(sniperTowerTimer >= 1.0){
+        Bullet bullet;
+        bullet.pos.x = sniperTowers[i].rect.x + 25;
+        bullet.pos.y = sniperTowers[i].rect.y + 25;
+        //bullet.direction = atan2(mousePos.y - sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2, mousePos.x - sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2);
+        bullet.direction = (angleBetweenEnemy);
+       // correct the bullet direction
+        if(radToDeg(bullet.direction) < 0){
+            bullet.direction += degToRad(360);
+        }
+        else if(radToDeg(bullet.direction) > 360){
+            bullet.direction -= degToRad(360);
+        }
+        bullet.speed = 1000;
+        bullet.active = true;
+        bullet.index = bulletCount;
+        bullets[bulletCount] = bullet;
+        bulletCount++;
+        printf("beuh %f\n", radToDeg(bullet.direction));
+        sniperTowerTimer = 0;
+    }
+
+
+        DrawRectangle(sniperTowers[i].rect.x, sniperTowers[i].rect.y, sniperTowers[i].rect.width, sniperTowers[i].rect.height, (Color){255, 0, 0, 255});
+    }
+}
+
+
+void purchaseSniperTower(){
+    if (player.coins >= sniperTowerCost){
+        leftMouseDown = true;
+        currentTower = SNIPER;
+        gameState = PLACING_TOWER;
+
+    }
+    else{
+        printf("Not enough coins\n");
+    }
+}
+
+inline double distance(Vector2 p1, Vector2 p2){
+    double x = p1.x - p2.x;
+    double y = p1.y - p2.y;
+    double distance = sqrt(x*x + y*y);
+    return distance;
 }
