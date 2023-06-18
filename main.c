@@ -60,6 +60,8 @@ Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
 Core core = {500, 500, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 16, 32, 32}, BLUE};
 Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
+Texture2D bulletTexture;
+Rectangle bulletTextureSource = {0, 0, 16, 16};
 SniperTower sniperTowers[50];
 double sniperTowerTimer = 0;
 Tower currentTower;
@@ -100,6 +102,8 @@ int main(void){
     upgradeDamageCost = player.damage * 10;
     upgradeHealthCost = player.maxHealth * 0.5;
 
+    bulletTexture = LoadTexture("images/bullet.png");
+
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
         if(IsMouseButtonUp(MOUSE_LEFT_BUTTON)) leftMouseDown = false;
@@ -136,9 +140,6 @@ int main(void){
             case PLACING_TOWER:
                 handleSniperTowers();
                 placeTower();
-                if(drawGhost){
-                    DrawRectangle(mousePos.x - 25, mousePos.y - 25, 50, 50, (Color){255, 0, 0, 100});
-                }
                 break;
         }
         DrawFPS(10, 50);
@@ -299,7 +300,10 @@ void shootBasic(Vector2 center, double angleBetweenMouse){
         bullet.pos.y = center.y;
         bullet.direction = angleBetweenMouse;
         bullet.speed = 750;
+        bullet.size = 4;
         bullet.active = true;
+        bullet.color = GREEN;
+        bullet.damage = player.damage;
         bullet.index = bulletCount;
         bullets[bulletCount] = bullet;
         bulletCount++;
@@ -322,6 +326,9 @@ void shootShotgun(Vector2 center, double angleBetweenMouse){
             bullet.speed = 750;
             bullet.active = true;
             bullet.index = bulletCount;
+            bullet.color = GREEN;
+            bullet.damage = player.damage;
+            bullet.size = 4;
             bullets[bulletCount] = bullet;
             bulletCount++;
         }
@@ -516,7 +523,9 @@ void handleBullets(){
         bullets[i].speed += 10.5;
 
 
-        DrawCircle(bullets[i].pos.x, bullets[i].pos.y, 4, GREEN);
+        //DrawCircle(bullets[i].pos.x, bullets[i].pos.y, bullets[i].size, bullets[i].color);
+        Rectangle dest = (Rectangle){bullets[i].pos.x, bullets[i].pos.y, bulletTexture.width, bulletTexture.height};
+        DrawTextureEx(bulletTexture, bullets[i].pos, 0, 1, WHITE);
         // destory bullet if outside screen
         if((bullets[i].pos.x > screenWidth || bullets[i].pos.x < 0) || (bullets[i].pos.y < 0 || bullets[i].pos.y > screenHeight)){
             destroyBullet(i);
@@ -526,8 +535,8 @@ void handleBullets(){
             if(ENEMIES[j].alive == false){
                 break;
             }
-            if(CheckCollisionCircles(ENEMIES[j].pos, 10, bullets[i].pos, 4)){
-                ENEMIES[j].health -= player.damage;
+            if(CheckCollisionCircles(ENEMIES[j].pos, 10, bullets[i].pos, bullets[i].size)){
+                ENEMIES[j].health -= bullets[i].damage;
                 destroyBullet(i);
             }
         }
@@ -571,6 +580,13 @@ void savePlayerData(){
     fprintf(file, "%f\n", player.damage);
     fprintf(file, "%f\n", player.maxHealth);
     fprintf(file, "%d\n", shotgunPurchased);
+
+    fprintf(file, "%d\n", sniperTowerCount);
+    for(int i = 0; i < sniperTowerCount; i++){
+        fprintf(file, "%f\n", sniperTowers[i].rect.x);
+        fprintf(file, "%f\n", sniperTowers[i].rect.y);
+    }
+
     fclose(file);
 }
 void loadPlayerData(){
@@ -583,6 +599,17 @@ void loadPlayerData(){
             fscanf(file, "%lf\n", &player.damage);
             fscanf(file, "%lf\n", &player.maxHealth);
             fscanf(file, "%d\n", &tempBool);
+
+            fscanf(file, "%d\n", &sniperTowerCount);
+            for(int i = 0; i < sniperTowerCount; i++){
+                fscanf(file, "%f\n", &sniperTowers[i].rect.x);
+                fscanf(file, "%f\n", &sniperTowers[i].rect.y);
+                sniperTowers[i].rect.width = 50;
+                sniperTowers[i].rect.height = 50;
+
+            }
+
+
             fclose(file);
             shotgunPurchased = tempBool;
         }
@@ -593,10 +620,11 @@ void loadPlayerData(){
             fprintf(file, "%d\n", 1);
             fprintf(file, "%d\n", 100);
             fprintf(file, "%d\n", 0);
-            player.coins = 10000;
+            player.coins = 0;
             player.damage = 10;
             player.maxHealth = 100;
             shotgunPurchased = 0;
+            sniperTowerCount = 0;
             fclose(file);
         }
 }
@@ -694,10 +722,15 @@ void clamp(double* value, double max){
 
 void spawnSniperTower(){
     SniperTower tower;
-    tower.rect.x = mousePos.x - 25;
-    tower.rect.y = mousePos.y - 25;
-    tower.rect.width = 50;
-    tower.rect.height = 50;
+    tower.rect.height = 64;
+    tower.rect.width = 64;
+
+    int towerPosX = mousePos.x - (tower.rect.width / 2);
+    int towerPosY = mousePos.y - (tower.rect.height / 2);
+
+    tower.rect.x = (double)roundToNearestMutiple(towerPosX, 64);
+    tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
+    printf("Sniper tower placed at (%f, %f)\n", tower.rect.x, tower.rect.y);
     sniperTowers[sniperTowerCount] = tower;
     sniperTowerCount++;
 }
@@ -708,6 +741,7 @@ void placeTower(){
     switch(currentTower){
         case SNIPER:
             if(player.coins >= sniperTowerCost){
+                DrawRectangle(roundToNearestMutiple((int)mousePos.x - 32, 64), roundToNearestMutiple((int)mousePos.y - 32, 64), 64, 64, (Color){255, 0, 0, 100});
                 if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
                     player.coins -= sniperTowerCost;
                     spawnSniperTower();
@@ -741,52 +775,43 @@ void handleSniperTowers(){
             if(ENEMIES[i].alive == false){
                 break;
             }
-            double distanceToEnemy = distance((Vector2){sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25},
+            double distanceToEnemy = distance((Vector2){sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2, sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2},
                                               (Vector2){ENEMIES[i].pos.x, ENEMIES[i].pos.y});
             if(distanceToEnemy < shortestDistance){
                 shortestDistance = distanceToEnemy;
                 closestEnemy = ENEMIES[i];
             }
         }   
-        double framesToEnemy = shortestDistance / (1000 * deltaTime);
-        if(framesToEnemy > 0){
+        double framesToEnemy = shortestDistance / (1200 * deltaTime);
+        if(framesToEnemy >= 1){
             closestEnemy.pos.x += cos(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
             closestEnemy.pos.y += sin(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
         }
-        double angleBetweenEnemy = atan2(closestEnemy.pos.y - sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2, closestEnemy.pos.x - sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2);
-        if(radToDeg(angleBetweenEnemy) < 0){
-            angleBetweenEnemy += degToRad(360);
-        }
-        else if(radToDeg(angleBetweenEnemy) > 360){
-            angleBetweenEnemy -= degToRad(360);
-        }
-        DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
-        DrawLine(0, sniperTowers[i].rect.y + 25, screenWidth, sniperTowers[i].rect.y + 25, (Color){0, 0, 255, 255});
-        // create a bullet with the angle between the enemy and the tower
-    if(sniperTowerTimer >= 1.0){
+        double angleBetweenEnemy = atan2(closestEnemy.pos.y - (sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2), closestEnemy.pos.x - (sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2));
+
+        //DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
+        //DrawCircleGradient(closestEnemy.pos.x, closestEnemy.pos.y, 10, (Color){255, 0, 0, 255}, (Color){0, 0, 0, 0});
+        //DrawLine(0, sniperTowers[i].rect.y + 25, screenWidth, sniperTowers[i].rect.y + 25, (Color){0, 0, 255, 255});
+    if(sniperTowerTimer >= 1){
         Bullet bullet;
-        bullet.pos.x = sniperTowers[i].rect.x + 25;
-        bullet.pos.y = sniperTowers[i].rect.y + 25;
-        //bullet.direction = atan2(mousePos.y - sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2, mousePos.x - sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2);
-        bullet.direction = (angleBetweenEnemy);
-       // correct the bullet direction
-        if(radToDeg(bullet.direction) < 0){
-            bullet.direction += degToRad(360);
-        }
-        else if(radToDeg(bullet.direction) > 360){
-            bullet.direction -= degToRad(360);
-        }
+        bullet.pos.x = sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2;
+        bullet.pos.y = sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2;
+        bullet.direction = angleBetweenEnemy;
+       
         bullet.speed = 1000;
         bullet.active = true;
         bullet.index = bulletCount;
+        bullet.size = 6;
+        bullet.damage = 50;
+        bullet.color = MAGENTA;
         bullets[bulletCount] = bullet;
         bulletCount++;
-        printf("beuh %f\n", radToDeg(bullet.direction));
-        sniperTowerTimer = 0;
+        printf("angle %f\n", radToDeg(bullet.direction));
     }
-
-
         DrawRectangle(sniperTowers[i].rect.x, sniperTowers[i].rect.y, sniperTowers[i].rect.width, sniperTowers[i].rect.height, (Color){255, 0, 0, 255});
+    }
+    if(sniperTowerTimer >= 1){
+        sniperTowerTimer = 0;
     }
 }
 
@@ -803,9 +828,19 @@ void purchaseSniperTower(){
     }
 }
 
-inline double distance(Vector2 p1, Vector2 p2){
+double distance(Vector2 p1, Vector2 p2){
     double x = p1.x - p2.x;
     double y = p1.y - p2.y;
     double distance = sqrt(x*x + y*y);
     return distance;
+}
+
+int roundToNearestMutiple(int num, int mul){
+    int remainder = num % mul;
+    if(remainder >= mul / 2){
+        return num + (mul - remainder);
+    }
+    else{
+        return num - remainder;
+    }
 }

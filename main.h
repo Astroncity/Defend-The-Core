@@ -102,6 +102,9 @@ typedef struct Bullet{
     Vector2 pos;
     bool active;
     int index;
+    int size;
+    int damage;
+    Color color;    
 }Bullet;
 
 
@@ -146,3 +149,4 @@ void placeTower();
 void handleSniperTowers();
 void purchaseSniperTower();
 inline double distance(Vector2 p1, Vector2 p2);
+int roundToNearestMutiple(int num, int mul);
