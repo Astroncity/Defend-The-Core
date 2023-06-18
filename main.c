@@ -53,6 +53,7 @@ GameState gameState = MAIN_MENU;
 double deltaTime = 0;
 double runtime = 0;
 double difficulty = 1;
+Texture2D backgroundTexture;
 
 Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
                 {(Vector2){screenWidth / 2 - 16, screenHeight / 2}, (Vector2){screenWidth / 2, screenHeight / 2 + 32}, (Vector2){screenWidth / 2 + 16, screenHeight / 2}}};
@@ -74,7 +75,7 @@ double upgradeHealthCost;
 int shotgunCost = 500;
 bool shotgunPurchased = false;
 bool leftMouseDown = false;
-
+bool useGamepad;
 
 
 
@@ -95,6 +96,7 @@ int main(void){
     else{
         backgroundColor = WHITE;
     }
+    useGamepad = false;
 
     player.healthBar = (HealthBar){player.health, player.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, GREEN, RED};
     player.hitbox = (Rectangle){0, 0, 28, 28};
@@ -103,6 +105,7 @@ int main(void){
     upgradeHealthCost = player.maxHealth * 0.5;
 
     bulletTexture = LoadTexture("images/bullet.png");
+    backgroundTexture = LoadTexture("images/background.png");
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
@@ -119,6 +122,7 @@ int main(void){
                 handleButton(&settingsButton, (Tower)NONE);
                 break;
             case PLAYING:
+                DrawTexture(backgroundTexture, 0, 0, WHITE);
                 handleCore();
                 handlePlayer();
                 handleEnemies();
@@ -143,7 +147,7 @@ int main(void){
                 break;
         }
         DrawFPS(10, 50);
-        DrawLine(player.center.x, player.center.y, mousePos.x, mousePos.y, RED);
+        //DrawLine(player.center.x, player.center.y, mousePos.x, mousePos.y, RED);
         DrawText(TextFormat("Coins: %d", player.coins), 10, 10, 20, GREEN);
         EndDrawing();
 
@@ -232,36 +236,29 @@ void handlePlayer(){
     player.center = center;
     double angleBetweenMouse = atan2(mousePos.y - center.y, mousePos.x - center.x);
     double angDiff = angleBetweenMouse - player.direction;
+    double gamepadAngle;
 
-    if(radToDeg(angleBetweenMouse) > 360){
-        player.direction -= degToRad(360);
-    }
-    else if(radToDeg(angleBetweenMouse) < 0){
-        player.direction += degToRad(360);
-    }
+    if(radToDeg(angleBetweenMouse) > 360){player.direction -= degToRad(360);}
+    else if(radToDeg(angleBetweenMouse) < 0){player.direction += degToRad(360);}
     
-    if (IsKeyDown(KEY_LEFT_SHIFT)){
-        player.speed = 600;
-    }
-    else{
-        player.speed = 300;
-    }   
+    if (IsKeyDown(KEY_LEFT_SHIFT)){player.speed = 600;}
+    else{player.speed = 300;}  
 
-    if(IsKeyDown(KEY_W)){
-        translateTrig(&player.trig, cos(player.direction) * player.speed * deltaTime, sin(player.direction) * player.speed * deltaTime);
-    }
-    if(IsKeyDown(KEY_S)){
-        translateTrig(&player.trig, -cos(player.direction) * player.speed * deltaTime, -sin(player.direction) * player.speed * deltaTime);
-    }
-    if(IsKeyDown(KEY_A)){
-        translateTrig(&player.trig, -cos(player.direction + degToRad(90) * player.speed * deltaTime),
-                      -sin(player.direction + degToRad(90) * player.speed * deltaTime));
-    }
-    if(IsKeyDown(KEY_D)){
-        translateTrig(&player.trig, cos(player.direction + degToRad(90)) * player.speed * deltaTime,
-                      sin(player.direction + degToRad(90)) * player.speed * deltaTime);
-    }
+    // Keyboard
+    if(IsKeyDown(KEY_W)){translateTrig(&player.trig, cos(player.direction) * player.speed * deltaTime, sin(player.direction) * player.speed * deltaTime);}
+    if(IsKeyDown(KEY_S)){translateTrig(&player.trig, -cos(player.direction) * player.speed * deltaTime, -sin(player.direction) * player.speed * deltaTime);}
+    if(IsKeyDown(KEY_A)){translateTrig(&player.trig, -cos(player.direction + degToRad(90) * player.speed * deltaTime), -sin(player.direction + degToRad(90) * player.speed * deltaTime));}
+    if(IsKeyDown(KEY_D)){translateTrig(&player.trig, cos(player.direction + degToRad(90)) * player.speed * deltaTime, sin(player.direction + degToRad(90)) * player.speed * deltaTime);}
 
+    // GamePad
+    if(IsGamepadAvailable(0) && useGamepad){
+        double leftStickY = GetGamepadAxisMovement(0, GAMEPAD_AXIS_LEFT_Y);
+        double rightStickX = GetGamepadAxisMovement(0, GAMEPAD_AXIS_RIGHT_X);
+        if(IsGamepadButtonDown(0, GAMEPAD_BUTTON_LEFT_TRIGGER_1)){player.speed = 600;}
+        else{player.speed = 300;}
+        translateTrig(&player.trig, -cos(player.direction) * player.speed * deltaTime * leftStickY, -sin(player.direction) * player.speed * deltaTime * leftStickY);
+        gamepadAngle = player.direction + (rightStickX / 25); // broken
+    }
     player.hitbox.x = player.center.x - player.hitbox.width / 2;
     player.hitbox.y = player.center.y - player.hitbox.height / 2;
 
@@ -279,10 +276,18 @@ void handlePlayer(){
     if(player.health <= 0){
         gameState = DEAD;
     }
+    if(!useGamepad){
+        player.direction = angleBetweenMouse;
+    }
+    else{
+        angDiff = gamepadAngle - player.direction;
+        player.direction = gamepadAngle;
+    }
     rotateVector2(&player.trig.a, angDiff, center);
     rotateVector2(&player.trig.b, angDiff, center);
     rotateVector2(&player.trig.c, angDiff, center);
-    player.direction = angleBetweenMouse;
+    center = (Vector2){(player.trig.a.x + player.trig.b.x + player.trig.c.x) / 3, (player.trig.a.y + player.trig.b.y + player.trig.c.y) / 3};
+    player.center = center;
     DrawTriangle(player.trig.a, player.trig.b, player.trig.c, (Color){193, 225, 193, 255});
     DrawRectangle(player.healthBar.rect.x, player.healthBar.rect.y,
                   player.healthBar.rect.width, player.healthBar.rect.height, player.healthBar.backgroundColor);
@@ -293,12 +298,12 @@ void handlePlayer(){
 void shootBasic(Vector2 center, double angleBetweenMouse){
     bool canShoot = true;
 
-    if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot){
+    if((IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot) || (useGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) && canShoot){
         canShoot = false;
         Bullet bullet;
         bullet.pos.x = center.x;
         bullet.pos.y = center.y;
-        bullet.direction = angleBetweenMouse;
+        bullet.direction = (useGamepad) ? player.direction : angleBetweenMouse;
         bullet.speed = 750;
         bullet.size = 4;
         bullet.active = true;
@@ -308,9 +313,11 @@ void shootBasic(Vector2 center, double angleBetweenMouse){
         bullets[bulletCount] = bullet;
         bulletCount++;
     }
-    if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
+    if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON) || (useGamepad && IsGamepadButtonReleased(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2))){
         canShoot = true;
     }
+    //print gamepad state
+    //print("Gamepad: %d", IsGamepadButtonReleased);
 }
 
 void shootShotgun(Vector2 center, double angleBetweenMouse){
@@ -524,7 +531,6 @@ void handleBullets(){
 
 
         //DrawCircle(bullets[i].pos.x, bullets[i].pos.y, bullets[i].size, bullets[i].color);
-        Rectangle dest = (Rectangle){bullets[i].pos.x, bullets[i].pos.y, bulletTexture.width, bulletTexture.height};
         DrawTextureEx(bulletTexture, bullets[i].pos, 0, 1, WHITE);
         // destory bullet if outside screen
         if((bullets[i].pos.x > screenWidth || bullets[i].pos.x < 0) || (bullets[i].pos.y < 0 || bullets[i].pos.y > screenHeight)){
@@ -593,7 +599,7 @@ void loadPlayerData(){
     //read player coins from a file ending in .test
     int tempBool;
     FILE *file;
-    if((file = fopen("resources/playerData.txt", "r"))!=NULL)
+    if((file = fopen("resources/playerData.txt", "r")) != NULL)
         {
             fscanf(file, "%d\n", &player.coins);
             fscanf(file, "%lf\n", &player.damage);
@@ -806,7 +812,6 @@ void handleSniperTowers(){
         bullet.color = MAGENTA;
         bullets[bulletCount] = bullet;
         bulletCount++;
-        printf("angle %f\n", radToDeg(bullet.direction));
     }
         DrawRectangle(sniperTowers[i].rect.x, sniperTowers[i].rect.y, sniperTowers[i].rect.width, sniperTowers[i].rect.height, (Color){255, 0, 0, 255});
     }
@@ -828,14 +833,14 @@ void purchaseSniperTower(){
     }
 }
 
-double distance(Vector2 p1, Vector2 p2){
+inline double distance(Vector2 p1, Vector2 p2){
     double x = p1.x - p2.x;
     double y = p1.y - p2.y;
     double distance = sqrt(x*x + y*y);
     return distance;
 }
 
-int roundToNearestMutiple(int num, int mul){
+inline int roundToNearestMutiple(int num, int mul){
     int remainder = num % mul;
     if(remainder >= mul / 2){
         return num + (mul - remainder);
@@ -844,3 +849,4 @@ int roundToNearestMutiple(int num, int mul){
         return num - remainder;
     }
 }
+
