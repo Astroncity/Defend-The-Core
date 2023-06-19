@@ -1,19 +1,5 @@
-#include "raylib.h"
-
-typedef enum Tower{
-    NONE,
-    SNIPER
-}Tower;
-
-typedef struct SniperTower{
-    double damage;
-    double attackSpeed;
-    double range;
-    double direction;
-    Rectangle rect;
-    bool active;
-    int index;
-}SniperTower;
+#include "../lib/raylib.h"
+#include "utils.h"
 
 typedef enum GameState{
         MAIN_MENU,
@@ -25,38 +11,16 @@ typedef enum GameState{
         PLACING_TOWER
 }GameState;
 
-typedef struct Button{
-    int x;
-    int y;
-    int width;
-    int height;
-    int borderX;
-    int borderY;
-    int borderWidth;
-    int borderHeight;
-    int borderThickness;
-    int textOffset;
-    double scale;
-    char* text;
-    Color color;
-    Color borderColor;
-    void (*func)();
-    int fontSize;
-}Button;
-
-typedef struct HealthBar{
-    double value;
-    double max;
+typedef struct SniperTower{
+    double damage;
+    double attackSpeed;
+    double range;
+    double direction;
     Rectangle rect;
-    Color barColor;
-    Color backgroundColor;
-}HealthBar;
+    bool active;
+    int index;
+}SniperTower;
 
-typedef struct Trig{
-    Vector2 a;
-    Vector2 b;
-    Vector2 c;
-}Trig;
 
 typedef struct Player{
     double health;
@@ -109,18 +73,11 @@ typedef struct Bullet{
 
 
 
-void drawMainMenu();
-Button initButton(int x, int y, int width, int height, int borderThickness, 
-                  int textOffset, const char* text, Color color, int fontSize, void (*func)());
-void handleButton(Button* button, Tower tower);
 void initMainMenu();
 void storeButtonFunc();
 void playButtonFunc();
 void settingsButtonFunc();
 void handlePlayer();
-void rotateVector2(Vector2* vector, float angle, Vector2 center);
-double degToRad(double angle);
-double radToDeg(double angle);
 void handleCore();
 double coreBonusTimer;
 void handleEnemies();
@@ -141,12 +98,9 @@ void initStoreMenu();
 void purchaseShotgun();
 void shootBasic(Vector2 center, double angleBetweenMouse);
 void shootShotgun(Vector2 center, double angleBetweenMouse);
-void translateTrig(Trig* trig, double x, double y);
-void clamp(double* value, double max);
 void scaleDifficulty(double runtime);
 void spawnSniperTower();
 void placeTower();
 void handleSniperTowers();
 void purchaseSniperTower();
-inline double distance(Vector2 p1, Vector2 p2);
-inline int roundToNearestMutiple(int num, int mul);
+void handleSniperTowers();

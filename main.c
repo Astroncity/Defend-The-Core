@@ -1,10 +1,11 @@
-#include "include/raylib.h"
+#include "gui.h"
 #include "main.h"
+#include "utils.h"
+#include "lib/raylib.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <memory.h>
 #include <stdbool.h>
 
 #define screenWidth 1920
@@ -117,9 +118,10 @@ int main(void){
 
         switch(gameState){
             case MAIN_MENU:
-                handleButton(&playButton, (Tower)NONE);
-                handleButton(&storeButton, (Tower)NONE);
-                handleButton(&settingsButton, (Tower)NONE);
+                ButtonArgs args;
+                handleButton(&playButton, mousePos, args);
+                handleButton(&storeButton, mousePos, args);
+                handleButton(&settingsButton, mousePos, args);
                 break;
             case PLAYING:
                 DrawTexture(backgroundTexture, 0, 0, WHITE);
@@ -176,59 +178,6 @@ void storeButtonFunc(){
 void settingsButtonFunc(){
     gameState = SETTINGS;
     printf("Settings button pressed\n");
-}
-
-Button initButton(int x, int y, int width, int height, int borderThickness,
-                  int textOffset, const char* text, Color color,  int fontSize, void (*func)()){
-    Button button;
-    button.x = x;
-    button.y = y;
-    button.width = width;
-    button.height = height;
-    button.textOffset = textOffset;
-    button.func = func;
-    button.text = malloc((strlen(text) + 1) * sizeof(char)); // Allocate memory for text
-    strcpy(button.text, text);
-    button.color = color;
-    button.borderColor = BLACK;
-    button.borderThickness = borderThickness;
-    button.borderX = button.x - button.borderThickness;
-    button.borderY = button.y - button.borderThickness;
-    button.borderWidth = button.width + (2 * button.borderThickness);
-    button.borderHeight = button.height + (2 * button.borderThickness);
-    button.fontSize = fontSize;
-    return button;
-}
-void handleButton(Button* button, Tower tower){
-    // border
-    DrawRectangle(button -> borderX,
-                  button -> borderY, 
-                  button -> borderWidth, 
-                  button -> borderHeight, 
-                  button -> borderColor);
-    // button  
-    DrawRectangle(button -> x,
-                  button -> y, 
-                  button -> width, 
-                  button -> height, 
-                  button -> color);
-
-    int centerX = button -> x + button -> width / 2;
-    int centerY = button -> y + button -> height / 2;
-    int startX = centerX - strlen(button -> text) * button -> fontSize / 2;
-    int startY = centerY - button -> fontSize / 2;
-    DrawText(button -> text, (startX + button -> textOffset), startY, button -> fontSize, BLACK);
-
-    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> borderX, button -> borderY, button -> borderWidth, button -> borderHeight})){
-        if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-            (tower == NONE) ? button -> func() : button -> func(tower);
-        }
-        button -> borderColor = BLUE;
-    }
-    else{
-        button -> borderColor = BLACK;
-    }
-
 }
 
 void handlePlayer(){
@@ -298,7 +247,7 @@ void handlePlayer(){
 void shootBasic(Vector2 center, double angleBetweenMouse){
     bool canShoot = true;
 
-    if((IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot) || (useGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) && canShoot){
+    if((IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && canShoot) || ((useGamepad && IsGamepadButtonPressed(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2)) && canShoot)){
         canShoot = false;
         Bullet bullet;
         bullet.pos.x = center.x;
@@ -344,32 +293,6 @@ void shootShotgun(Vector2 center, double angleBetweenMouse){
         canShoot = true;
     }
 }
-
-void rotateVector2(Vector2* vector, float angle, Vector2 center){
-    // rotate all points of the triangle around its center
-    float s = sin(angle);
-    float c = cos(angle);
-
-    // translate point back to origin:
-    vector -> x -= center.x;
-    vector -> y -= center.y;
-
-    // rotate point
-    float xnew = vector -> x * c - vector -> y * s;
-    float ynew = vector -> x * s + vector -> y * c;
-
-    // translate point back:
-    vector -> x = xnew + center.x;
-    vector -> y = ynew + center.y;
-}
-
-inline double degToRad(double angle){
-    return angle * PI / 180;
-}
-inline double radToDeg(double angle){
-    return angle * 180 / PI;
-}
-
 void handleCore(){
     coreBonusTimer += GetFrameTime();
     core.center = (Vector2){core.rect.x + core.rect.width / 2, core.rect.y + core.rect.height / 2};
@@ -647,17 +570,17 @@ void handleStore(){
     int upgradeDamageCostInt = (int)upgradeDamageCost;
     int upgradeHealthCostInt = (int)upgradeHealthCost;
     
-    handleButton(&upgradeDamageButton, (Tower)NONE);
+    handleButton(&upgradeDamageButton, mousePos, (ButtonArgs){0});
     DrawText(TextFormat("Price: %d", upgradeDamageCostInt), upgradeDamageButton.x + upgradeDamageButton.width + 30, upgradeDamageButton.y + upgradeDamageButton.height / 2 - 10, 40, BLACK);
     
-    handleButton(&upgradeHealthButton, (Tower)NONE);
+    handleButton(&upgradeHealthButton, mousePos, (ButtonArgs){0});
     DrawText(TextFormat("Price: %d", upgradeHealthCostInt), upgradeHealthButton.x + upgradeHealthButton.width + 30, upgradeHealthButton.y + upgradeHealthButton.height / 2 - 10, 40, BLACK);
     
-    handleButton(&sniperTowerButton, (Tower)SNIPER);
+    handleButton(&sniperTowerButton, mousePos, (ButtonArgs){0});
     DrawText(TextFormat("Price: %d", sniperTowerCost), sniperTowerButton.x + sniperTowerButton.width + 30, sniperTowerButton.y + sniperTowerButton.height / 2 - 10, 40, BLACK);
 
     if(shotgunPurchased == false){
-        handleButton(&shotgunButton, (Tower)NONE);
+        handleButton(&shotgunButton, mousePos, (ButtonArgs){SNIPER});
         DrawText(TextFormat("Price: %d", shotgunCost), shotgunButton.x + shotgunButton.width + 30, shotgunButton.y + shotgunButton.height / 2 - 10, 40, BLACK);
     }
     if(IsKeyPressed(KEY_ESCAPE)){
@@ -701,14 +624,6 @@ void purchaseShotgun(){
     }
 }
 
-void translateTrig(Trig* trig, double x, double y){
-    trig -> a.x += x;
-    trig -> a.y += y;
-    trig -> b.x += x;
-    trig -> b.y += y;
-    trig -> c.x += x;
-    trig -> c.y += y;
-}
 void scaleDifficulty(double runtime){
     double base_difficulty = 1.0;
     double difficulty_increase_rate = 0.01;
@@ -720,11 +635,6 @@ void scaleDifficulty(double runtime){
     
 }
 
-void clamp(double* value, double max){
-    if(*value > max){
-        *value = max;
-    }
-}
 
 void spawnSniperTower(){
     SniperTower tower;
@@ -798,7 +708,7 @@ void handleSniperTowers(){
         //DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
         //DrawCircleGradient(closestEnemy.pos.x, closestEnemy.pos.y, 10, (Color){255, 0, 0, 255}, (Color){0, 0, 0, 0});
         //DrawLine(0, sniperTowers[i].rect.y + 25, screenWidth, sniperTowers[i].rect.y + 25, (Color){0, 0, 255, 255});
-    if(sniperTowerTimer >= 1){
+    if(sniperTowerTimer >= 1 && lastUsedEnemySlot() != -1){
         Bullet bullet;
         bullet.pos.x = sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2;
         bullet.pos.y = sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2;
@@ -832,21 +742,3 @@ void purchaseSniperTower(){
         printf("Not enough coins\n");
     }
 }
-
-inline double distance(Vector2 p1, Vector2 p2){
-    double x = p1.x - p2.x;
-    double y = p1.y - p2.y;
-    double distance = sqrt(x*x + y*y);
-    return distance;
-}
-
-inline int roundToNearestMutiple(int num, int mul){
-    int remainder = num % mul;
-    if(remainder >= mul / 2){
-        return num + (mul - remainder);
-    }
-    else{
-        return num - remainder;
-    }
-}
-
