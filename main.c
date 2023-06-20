@@ -10,8 +10,8 @@
 
 #define screenWidth 1920
 #define screenHeight 1080
-#define MAX_ENEMIES 100
-#define MAX_BULLETS 10000
+#define MAX_ENEMIES 1000
+#define MAX_BULLETS 500
 #define PELLET_COUNT 5
 #define SHOTGUN_PELLET_SPREAD 4
 
@@ -39,12 +39,20 @@
 
 // UI things
 Button playButton;
+Texture2D playButtonTexture;
 Button storeButton;
+Texture2D storeButtonTexture;
 Button settingsButton;
+Texture2D settingsButtonTexture;
 Button upgradeHealthButton;
+Texture2D upgradeHealthButtonTexture;
 Button upgradeDamageButton;
+Texture2D upgradeDamageButtonTexture;
 Button shotgunButton;
+Texture2D shotgunButtonTexture;
 Button sniperTowerButton;
+Texture2D sniperTowerButtonTexture;
+
 
 bool darkMode = false;
 Vector2 mousePos;
@@ -161,9 +169,18 @@ int main(void){
 }
 
 void initMainMenu(){
-    playButton = initButton(screenWidth/2 - 187, screenHeight/2 - 190, 374, 130, 10, 40, "Play", WHITE, 50, playButtonFunc);
-    storeButton = initButton(screenWidth/2 - 187, screenHeight/2, 374, 130, 10, 45, "Store", WHITE, 50, storeButtonFunc);
-    settingsButton = initButton(screenWidth/2 - 187, screenHeight/2 + 190, 374, 130, 10, 95, "Settings", WHITE, 50, settingsButtonFunc);
+    Rectangle mainMenuButtonSrc = {0, 0, 110, 54};
+    double midx = screenWidth/2 - 187;
+
+
+    playButtonTexture = LoadTexture("images/playButton.png");
+    storeButtonTexture = LoadTexture("images/storeButton.png");
+    settingsButtonTexture = LoadTexture("images/settingsButton.png");
+
+    
+    playButton = initButton((Vector2){midx, screenHeight/2 - 190}, mainMenuButtonSrc, playButtonTexture, (Vector2){0, 0}, playButtonFunc);
+    storeButton = initButton((Vector2){midx, screenHeight/2}, mainMenuButtonSrc, storeButtonTexture, (Vector2){0, 0}, storeButtonFunc);
+    settingsButton = initButton((Vector2){midx, screenHeight/2 + 190}, mainMenuButtonSrc, settingsButtonTexture, (Vector2){0, 0}, settingsButtonFunc);
 }
 
 
@@ -192,6 +209,10 @@ void handlePlayer(){
     
     if (IsKeyDown(KEY_LEFT_SHIFT)){player.speed = 600;}
     else{player.speed = 300;}  
+
+    if(IsKeyDown(KEY_ESCAPE)){
+        gameState = MAIN_MENU;
+    }
 
     // Keyboard
     if(IsKeyDown(KEY_W)){translateTrig(&player.trig, cos(player.direction) * player.speed * deltaTime, sin(player.direction) * player.speed * deltaTime);}
@@ -268,6 +289,7 @@ void shootBasic(Vector2 center, double angleBetweenMouse){
     //print gamepad state
     //print("Gamepad: %d", IsGamepadButtonReleased);
 }
+
 
 void shootShotgun(Vector2 center, double angleBetweenMouse){
     bool canShoot = true;
@@ -560,10 +582,13 @@ void loadPlayerData(){
 
 
 void initStoreMenu(){
-    upgradeDamageButton = initButton(200, screenHeight/2 - 190, 374, 130, 10, 110, "Upgrade Damage", WHITE, 40, upgradeDamage);
-    upgradeHealthButton = initButton(200, screenHeight/2 - 50, 374, 130, 10, 110, "Upgrade Health", WHITE, 40, upgradeHealth);
-    shotgunButton = initButton(1200, screenHeight/2 - 190, 200, 130, 10, 60, "Shotgun", WHITE, 40, purchaseShotgun);
-    sniperTowerButton = initButton(1100, screenHeight/2, 300, 130, 10, 105, "Sniper Tower", WHITE, 40, purchaseSniperTower);
+    Texture2D tempTexture = LoadTexture("resources/upgradeButton.png");
+    Rectangle tempTextureSrc = {0, 0, 110, 54};
+
+    upgradeDamageButton = initButton((Vector2){200, screenHeight/2 - 190}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeDamage);
+    upgradeHealthButton = initButton((Vector2){200, screenHeight/2 - 50}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeHealth);
+    shotgunButton = initButton((Vector2){1200, screenHeight/2 - 190}, tempTextureSrc, tempTexture, (Vector2){0, 0}, purchaseShotgun);
+    sniperTowerButton = initButton((Vector2){1100, screenHeight/2}, tempTextureSrc, tempTexture, (Vector2){0, 0}, purchaseSniperTower);
 }
 
 void handleStore(){
@@ -571,17 +596,12 @@ void handleStore(){
     int upgradeHealthCostInt = (int)upgradeHealthCost;
     
     handleButton(&upgradeDamageButton, mousePos, (ButtonArgs){0});
-    DrawText(TextFormat("Price: %d", upgradeDamageCostInt), upgradeDamageButton.x + upgradeDamageButton.width + 30, upgradeDamageButton.y + upgradeDamageButton.height / 2 - 10, 40, BLACK);
-    
     handleButton(&upgradeHealthButton, mousePos, (ButtonArgs){0});
-    DrawText(TextFormat("Price: %d", upgradeHealthCostInt), upgradeHealthButton.x + upgradeHealthButton.width + 30, upgradeHealthButton.y + upgradeHealthButton.height / 2 - 10, 40, BLACK);
-    
     handleButton(&sniperTowerButton, mousePos, (ButtonArgs){0});
-    DrawText(TextFormat("Price: %d", sniperTowerCost), sniperTowerButton.x + sniperTowerButton.width + 30, sniperTowerButton.y + sniperTowerButton.height / 2 - 10, 40, BLACK);
+    
 
     if(shotgunPurchased == false){
         handleButton(&shotgunButton, mousePos, (ButtonArgs){SNIPER});
-        DrawText(TextFormat("Price: %d", shotgunCost), shotgunButton.x + shotgunButton.width + 30, shotgunButton.y + shotgunButton.height / 2 - 10, 40, BLACK);
     }
     if(IsKeyPressed(KEY_ESCAPE)){
         gameState = MAIN_MENU;
