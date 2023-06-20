@@ -4,6 +4,25 @@
 #include <stdlib.h>
 
 
+
+
+Button initButton(Vector2 pos, Rectangle src, Texture2D texture, Vector2 shadow, void (*func)()){
+    Button button;
+    button.pos = pos;
+    button.src = src;
+    button.texture = texture;
+    button.func = func;
+    button.scale = 3;
+    button.tint = WHITE;
+    button.hitbox = (Rectangle){pos.x + shadow.x, pos.y + shadow.y,
+                                src.width - shadow.x, src.height - shadow.y};
+
+    button.hitbox.width *= button.scale;
+    button.hitbox.height *= button.scale;
+    
+    return button;
+}
+
 void handleButton(Button* button, Vector2 mousePos, ButtonArgs args){
     if(args.tower != NONE){
         handleButtonTower(button, args.tower, mousePos);
@@ -13,100 +32,36 @@ void handleButton(Button* button, Vector2 mousePos, ButtonArgs args){
     }
 }
 
-Button initButton(int x, int y, int width, int height, int borderThickness,
-                  int textOffset, const char* text, Color color,  int fontSize, void (*func)()){
-    Button button;
-    button.x = x;
-    button.y = y;
-    button.width = width;
-    button.height = height;
-    button.textOffset = textOffset;
-    button.func = func;
-    button.text = malloc((strlen(text) + 1) * sizeof(char)); // Allocate memory for text
-    strcpy(button.text, text);
-    button.color = color;
-    button.borderColor = BLACK;
-    button.borderThickness = borderThickness;
-    button.borderX = button.x - button.borderThickness;
-    button.borderY = button.y - button.borderThickness;
-    button.borderWidth = button.width + (2 * button.borderThickness);
-    button.borderHeight = button.height + (2 * button.borderThickness);
-    button.fontSize = fontSize;
-    return button;
-}
-
-
-
-
-
-
-
-
-
-
 
 void handleButtonTower(Button* button, Tower tower, Vector2 mousePos){
-    // border
-    DrawRectangle(button -> borderX,
-                  button -> borderY, 
-                  button -> borderWidth, 
-                  button -> borderHeight, 
-                  button -> borderColor);
-    // button  
-    DrawRectangle(button -> x,
-                  button -> y, 
-                  button -> width, 
-                  button -> height, 
-                  button -> color);
+    DrawTextureEx(button -> texture, button -> pos, 0, button -> scale, button -> tint);
 
-    int centerX = button -> x + button -> width / 2;
-    int centerY = button -> y + button -> height / 2;
-    int startX = centerX - strlen(button -> text) * button -> fontSize / 2;
-    int startY = centerY - button -> fontSize / 2;
-    DrawText(button -> text, (startX + button -> textOffset), startY, button -> fontSize, BLACK);
-
-    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> borderX, button -> borderY,
-                               button -> borderWidth, button -> borderHeight})){
+    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> hitbox.x, button -> hitbox.y,
+                               button -> hitbox.width, button -> hitbox.height})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
             button -> func(tower);
         }
-        button -> borderColor = BLUE;
+        button -> tint = BLUE;
     }
     else{
-        button -> borderColor = BLACK;
+        button -> tint = WHITE;
     }
 
 }
 
+
 void handleButtonNorm(Button* button, Vector2 mousePos){
-    // border
-    DrawRectangle(button -> borderX,
-                  button -> borderY, 
-                  button -> borderWidth, 
-                  button -> borderHeight, 
-                  button -> borderColor);
-    // button  
-    DrawRectangle(button -> x,
-                  button -> y, 
-                  button -> width, 
-                  button -> height, 
-                  button -> color);
+    DrawTextureEx(button -> texture, button -> pos, 0, button -> scale, button -> tint);
 
-    int centerX = button -> x + button -> width / 2;
-    int centerY = button -> y + button -> height / 2;
-    int startX = centerX - strlen(button -> text) * button -> fontSize / 2;
-    int startY = centerY - button -> fontSize / 2;
-    DrawText(button -> text, (startX + button -> textOffset), startY, button -> fontSize, BLACK);
-
-    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> borderX, button -> borderY,
-                               button -> borderWidth, button -> borderHeight})){
+    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> hitbox.x, button -> hitbox.y,
+                               button -> hitbox.width, button -> hitbox.height})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
             button -> func();
         }
-        button -> borderColor = BLUE;
+        button -> tint = BLUE;
     }
     else{
-        button -> borderColor = BLACK;
+        button -> tint = WHITE;
     }
 
 }
