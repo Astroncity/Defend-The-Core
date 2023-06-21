@@ -53,6 +53,11 @@ Texture2D shotgunButtonTexture;
 Button sniperTowerButton;
 Texture2D sniperTowerButtonTexture;
 
+Texture2D greenLabel;
+Texture2D greenLabelShort;
+Texture2D greyLabel;
+Texture2D coin;
+
 
 bool darkMode = false;
 Vector2 mousePos;
@@ -67,7 +72,8 @@ Texture2D backgroundTexture;
 Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
                 {(Vector2){screenWidth / 2 - 16, screenHeight / 2}, (Vector2){screenWidth / 2, screenHeight / 2 + 32}, (Vector2){screenWidth / 2 + 16, screenHeight / 2}}};
 
-Core core = {500, 500, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 16, 32, 32}, BLUE};
+Core core = {500, 500, (Rectangle){screenWidth / 2 - 16*4, screenHeight / 2 - 16*4, 32*4, 32*4}, BLUE};
+Texture2D coreTexture;
 Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
 Texture2D bulletTexture;
@@ -85,7 +91,7 @@ int shotgunCost = 500;
 bool shotgunPurchased = false;
 bool leftMouseDown = false;
 bool useGamepad;
-
+Font propagandaFont;
 
 
 bool drawGhost = false;
@@ -93,6 +99,7 @@ bool drawGhost = false;
 int main(void){
     InitWindow(screenWidth, screenHeight, "raylib [core] example - keyboard input");
     SetTargetFPS(144);  
+    propagandaFont = LoadFont("fonts/propaganda.ttf");
 
     loadPlayerData();  
 
@@ -109,12 +116,17 @@ int main(void){
 
     player.healthBar = (HealthBar){player.health, player.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, GREEN, RED};
     player.hitbox = (Rectangle){0, 0, 28, 28};
-    core.healthBar = (HealthBar){core.health, core.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 128, 256, 4}, SKYBLUE, RED};
+    core.healthBar = (HealthBar){core.health, core.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 800, 256, 16}, SKYBLUE, RED};
     upgradeDamageCost = player.damage * 10;
     upgradeHealthCost = player.maxHealth * 0.5;
 
     bulletTexture = LoadTexture("images/bullet.png");
     backgroundTexture = LoadTexture("images/background.png");
+    greenLabel = LoadTexture("images/labelGreen.png");
+    greenLabelShort = LoadTexture("images/labelGreenShort.png");
+    greyLabel = LoadTexture("images/labelGrey.png");
+    coin = LoadTexture("images/coin.png");
+    coreTexture = LoadTexture("images/core.png");
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
@@ -140,9 +152,15 @@ int main(void){
                 handleBullets();
                 scaleDifficulty(runtime);
                 handleSniperTowers();
+                handleUI();
+                handleSniperTowerGUI();
+                if(IsKeyPressed(KEY_ESCAPE)){
+                    gameState = STORE;
+                }
                 break;
             case STORE:
                 handleStore();
+                handleUI();
                 break;
             case SETTINGS:
                 break;
@@ -154,11 +172,11 @@ int main(void){
             case PLACING_TOWER:
                 handleSniperTowers();
                 placeTower();
+                handleUI();
                 break;
         }
         DrawFPS(10, 50);
         //DrawLine(player.center.x, player.center.y, mousePos.x, mousePos.y, RED);
-        DrawText(TextFormat("Coins: %d", player.coins), 10, 10, 20, GREEN);
         EndDrawing();
 
     }
@@ -328,10 +346,13 @@ void handleCore(){
     }
 
     core.healthBar.rect.x = core.center.x - core.healthBar.rect.width / 2;
-    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 10;
+    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 100;
 
-                  
-    DrawRectangle(core.rect.x, core.rect.y, core.rect.width, core.rect.height, core.color);
+
+    DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y + 5}, 0, 4, (Color){0, 0, 0, 150});
+    DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, 4, WHITE);
+    
+    //DrawRectangle(core.rect.x, core.rect.y, core.rect.width, core.rect.height, (Color){255, 0, 0, 100});
 
     DrawRectangle(core.healthBar.rect.x, core.healthBar.rect.y,
                   core.healthBar.rect.width, core.healthBar.rect.height, core.healthBar.backgroundColor);
@@ -378,8 +399,8 @@ void handleEnemies(){
             break;
         }
         if(ENEMIES[i].health <= 0){
-            destroyEnemy(i);
             player.coins += ENEMIES[i].coinValue;
+            destroyEnemy(i);
         }
 
 
@@ -501,7 +522,7 @@ void deathScreen(){
         resetGame();
     }
 }
-
+    
 void resetGame(){
     gameState = MAIN_MENU;
     player.health = player.maxHealth;
@@ -536,6 +557,7 @@ void savePlayerData(){
     for(int i = 0; i < sniperTowerCount; i++){
         fprintf(file, "%f\n", sniperTowers[i].rect.x);
         fprintf(file, "%f\n", sniperTowers[i].rect.y);
+        fprintf(file, "%d\n", sniperTowers[i].level);
     }
 
     fclose(file);
@@ -543,6 +565,7 @@ void savePlayerData(){
 void loadPlayerData(){
     //read player coins from a file ending in .test
     int tempBool;
+    int tmpLevel;
     FILE *file;
     if((file = fopen("resources/playerData.txt", "r")) != NULL)
         {
@@ -555,8 +578,12 @@ void loadPlayerData(){
             for(int i = 0; i < sniperTowerCount; i++){
                 fscanf(file, "%f\n", &sniperTowers[i].rect.x);
                 fscanf(file, "%f\n", &sniperTowers[i].rect.y);
-                sniperTowers[i].rect.width = 50;
-                sniperTowers[i].rect.height = 50;
+                fscanf(file, "%d\n", &tmpLevel);
+                sniperTowers[i].rect.width = 32;
+                sniperTowers[i].rect.height = 32;
+                sniperTowers[i].level = tmpLevel;
+                sniperTowers[i].damage = 10 * tmpLevel;
+                sniperTowers[i].fireRate = 1 - (tmpLevel*0.05);
 
             }
 
@@ -582,20 +609,23 @@ void loadPlayerData(){
 
 
 void initStoreMenu(){
-    Texture2D tempTexture = LoadTexture("resources/upgradeButton.png");
+    Texture2D tempTexture = LoadTexture("images/upgradeButton.png");
+    upgradeDamageButtonTexture = LoadTexture("images/damageUpgradeIcon.png");
     Rectangle tempTextureSrc = {0, 0, 110, 54};
 
     upgradeDamageButton = initButton((Vector2){200, screenHeight/2 - 190}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeDamage);
-    upgradeHealthButton = initButton((Vector2){200, screenHeight/2 - 50}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeHealth);
+    upgradeHealthButton = initButton((Vector2){200, screenHeight/2 - 20}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeHealth);
     shotgunButton = initButton((Vector2){1200, screenHeight/2 - 190}, tempTextureSrc, tempTexture, (Vector2){0, 0}, purchaseShotgun);
     sniperTowerButton = initButton((Vector2){1100, screenHeight/2}, tempTextureSrc, tempTexture, (Vector2){0, 0}, purchaseSniperTower);
 }
 
 void handleStore(){
-    int upgradeDamageCostInt = (int)upgradeDamageCost;
-    int upgradeHealthCostInt = (int)upgradeHealthCost;
     
     handleButton(&upgradeDamageButton, mousePos, (ButtonArgs){0});
+    DrawTextureEx(upgradeDamageButtonTexture, (Vector2){upgradeDamageButton.pos.x + 375, upgradeDamageButton.pos.y + 14}, 0, 2.5, WHITE);
+    drawTextShadow(propagandaFont, TextFormat("%d", (int)player.damage), (Vector2){upgradeDamageButton.pos.x + 400, upgradeDamageButton.pos.y - 64}, 80, RED);
+    DrawTextureEx(greenLabelShort, (Vector2){upgradeDamageButton.pos.x + 550, upgradeDamageButton.pos.y + 10}, 0, 4, WHITE);
+    drawTextShadow(propagandaFont, TextFormat("%d", (int)upgradeDamageCost), (Vector2){upgradeDamageButton.pos.x + 600, upgradeDamageButton.pos.y + 42}, 80, BLACK);
     handleButton(&upgradeHealthButton, mousePos, (ButtonArgs){0});
     handleButton(&sniperTowerButton, mousePos, (ButtonArgs){0});
     
@@ -658,14 +688,17 @@ void scaleDifficulty(double runtime){
 
 void spawnSniperTower(){
     SniperTower tower;
-    tower.rect.height = 64;
-    tower.rect.width = 64;
+    tower.rect.height = 32;
+    tower.rect.width = 32;
 
     int towerPosX = mousePos.x - (tower.rect.width / 2);
     int towerPosY = mousePos.y - (tower.rect.height / 2);
 
-    tower.rect.x = (double)roundToNearestMutiple(towerPosX, 64);
-    tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
+    tower.rect.x = (double)roundToNearestMutiple(towerPosX, 32);
+    tower.rect.y = (double)roundToNearestMutiple(towerPosY, 32);
+    tower.fireRate = 1.0f;
+    tower.damage = 10.0f;
+    tower.level = 1;
     printf("Sniper tower placed at (%f, %f)\n", tower.rect.x, tower.rect.y);
     sniperTowers[sniperTowerCount] = tower;
     sniperTowerCount++;
@@ -677,7 +710,7 @@ void placeTower(){
     switch(currentTower){
         case SNIPER:
             if(player.coins >= sniperTowerCost){
-                DrawRectangle(roundToNearestMutiple((int)mousePos.x - 32, 64), roundToNearestMutiple((int)mousePos.y - 32, 64), 64, 64, (Color){255, 0, 0, 100});
+                DrawRectangle(roundToNearestMutiple((int)mousePos.x - 16, 32), roundToNearestMutiple((int)mousePos.y - 16, 32), 32, 32, (Color){255, 0, 0, 100});
                 if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
                     player.coins -= sniperTowerCost;
                     spawnSniperTower();
@@ -738,7 +771,7 @@ void handleSniperTowers(){
         bullet.active = true;
         bullet.index = bulletCount;
         bullet.size = 6;
-        bullet.damage = 50;
+        bullet.damage = sniperTowers[i].damage;
         bullet.color = MAGENTA;
         bullets[bulletCount] = bullet;
         bulletCount++;
@@ -760,5 +793,63 @@ void purchaseSniperTower(){
     }
     else{
         printf("Not enough coins\n");
+    }
+}
+
+
+
+
+void handleUI(){
+    DrawTextureEx(greyLabel, (Vector2){0, 0}, 0, 2.25, WHITE);
+    DrawTextureEx(coin, (Vector2){10, 14}, 0, 3, (Color){100, 100, 100, 100});
+    DrawTextureEx(coin, (Vector2){10, 10}, 0, 3, WHITE);
+    char playerCoinsStr;
+    addCommas(player.coins, &playerCoinsStr);
+
+    drawTextShadow(propagandaFont, (const char*)&playerCoinsStr, (Vector2){70, 15}, 45, (Color){255, 215, 0, 255});
+}
+
+void addCommas(int number, char* resultStr){
+    char numberStr[20];
+    sprintf(numberStr, "%d", number);
+    int length = strlen(numberStr);
+    int commas = (length - 1) / 3;
+
+    int resultIndex = 0;
+
+    int remainingDigits = length % 3;
+    if (remainingDigits == 0)
+        remainingDigits = 3;
+
+    for (int i = 0; i < length; i++) {
+        resultStr[resultIndex] = numberStr[i];
+        resultIndex++;
+
+        remainingDigits--;
+        if (remainingDigits == 0 && commas > 0) {
+            resultStr[resultIndex] = ',';
+            resultIndex++;
+            commas--;
+            remainingDigits = 3;
+        }
+    }
+
+    resultStr[resultIndex] = '\0';
+}
+
+
+void handleSniperTowerGUI(){
+    double dist = 999999999;
+    SniperTower closestTower;
+    for(int i = 0; i < sniperTowerCount; i++){
+        double distanceToTower = distance(player.center, (Vector2){sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2, sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2});
+        if(distanceToTower < dist){
+            dist = distanceToTower;
+            closestTower = sniperTowers[i];
+        }
+    }
+    if(dist < 100){
+        // draw a green rectangle above the tower
+        DrawRectangle(closestTower.rect.x, closestTower.rect.y - 50, 50, 50, (Color){0, 255, 0, 255});
     }
 }
