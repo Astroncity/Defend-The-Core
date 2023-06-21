@@ -16,9 +16,11 @@ typedef struct SniperTower{
     double attackSpeed;
     double range;
     double direction;
+    double fireRate;
     Rectangle rect;
     bool active;
     int index;
+    int level;
 }SniperTower;
 
 
@@ -104,3 +106,6 @@ void placeTower();
 void handleSniperTowers();
 void purchaseSniperTower();
 void handleSniperTowers();
+void handleUI();
+void addCommas(int number, char* resultStr);
+void handleSniperTowerGUI();

@@ -49,6 +49,12 @@ void handleButtonTower(Button* button, Tower tower, Vector2 mousePos){
 
 }
 
+void drawTextShadow(Font font, const char* text, Vector2 pos, int fontSize, Color color){
+    Color shadow = color;
+    shadow.a = 0.5 * color.a;
+    DrawTextEx(font, text, (Vector2){pos.x, pos.y}, fontSize, 1, color);
+    DrawTextEx(font, text, (Vector2){pos.x, pos.y + (0.1 * fontSize)}, fontSize, 1, shadow);
+}
 
 void handleButtonNorm(Button* button, Vector2 mousePos){
     DrawTextureEx(button -> texture, button -> pos, 0, button -> scale, button -> tint);
