@@ -21,6 +21,7 @@ typedef struct SniperTower{
     bool active;
     int index;
     int level;
+    double lastAngle;
 }SniperTower;
 
 
