@@ -11,7 +11,7 @@
 #define screenWidth 1920
 #define screenHeight 1080
 #define MAX_ENEMIES 1000
-#define MAX_BULLETS 500
+#define MAX_BULLETS 5000
 #define PELLET_COUNT 5
 #define SHOTGUN_PELLET_SPREAD 4
 
@@ -61,6 +61,7 @@ Texture2D coin;
 
 bool darkMode = false;
 Vector2 mousePos;
+Vector2 cameraPos = {0,0};  
 Color backgroundColor;
 
 GameState gameState = MAIN_MENU;
@@ -78,7 +79,9 @@ Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
 Texture2D bulletTexture;
 Rectangle bulletTextureSource = {0, 0, 16, 16};
-SniperTower sniperTowers[50];
+SniperTower sniperTowers[520];
+Texture2D sniperTowerBaseTexture;
+Texture2D sniperTowerTurretTexture;
 double sniperTowerTimer = 0;
 Tower currentTower;
 int sniperTowerCost = 100;
@@ -127,6 +130,8 @@ int main(void){
     greyLabel = LoadTexture("images/labelGrey.png");
     coin = LoadTexture("images/coin.png");
     coreTexture = LoadTexture("images/core.png");
+    sniperTowerBaseTexture = LoadTexture("images/sniperTower/sniperBase.png");
+    sniperTowerTurretTexture = LoadTexture("images/sniperTower/sniperGun2x.png");
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
@@ -176,7 +181,7 @@ int main(void){
                 break;
         }
         DrawFPS(10, 50);
-        //DrawLine(player.center.x, player.center.y, mousePos.x, mousePos.y, RED);
+        drawTextShadow(propagandaFont, TextFormat("Difficulty %.3g", round(difficulty * 100) / 100), (Vector2){(screenWidth / 2) - 300, 20}, 70, WHITE);
         EndDrawing();
 
     }
@@ -579,8 +584,8 @@ void loadPlayerData(){
                 fscanf(file, "%f\n", &sniperTowers[i].rect.x);
                 fscanf(file, "%f\n", &sniperTowers[i].rect.y);
                 fscanf(file, "%d\n", &tmpLevel);
-                sniperTowers[i].rect.width = 32;
-                sniperTowers[i].rect.height = 32;
+                sniperTowers[i].rect.width = 64;
+                sniperTowers[i].rect.height = 64;
                 sniperTowers[i].level = tmpLevel;
                 sniperTowers[i].damage = 10 * tmpLevel;
                 sniperTowers[i].fireRate = 1 - (tmpLevel*0.05);
@@ -688,14 +693,14 @@ void scaleDifficulty(double runtime){
 
 void spawnSniperTower(){
     SniperTower tower;
-    tower.rect.height = 32;
-    tower.rect.width = 32;
+    tower.rect.height = 64;
+    tower.rect.width = 64;
 
     int towerPosX = mousePos.x - (tower.rect.width / 2);
     int towerPosY = mousePos.y - (tower.rect.height / 2);
 
-    tower.rect.x = (double)roundToNearestMutiple(towerPosX, 32);
-    tower.rect.y = (double)roundToNearestMutiple(towerPosY, 32);
+    tower.rect.x = (double)roundToNearestMutiple(towerPosX, 64);
+    tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
     tower.fireRate = 1.0f;
     tower.damage = 10.0f;
     tower.level = 1;
@@ -705,18 +710,39 @@ void spawnSniperTower(){
 }
 
 void placeTower(){
-    drawGhost = true;
     printf("ran\n");
+    Vector2 roundedMousePos = (Vector2){roundToNearestMutiple((int)mousePos.x - 32, 64), roundToNearestMutiple((int)mousePos.y - 32, 64)};
+    bool canPlace = true;
+    if(IsKeyPressed(KEY_ESCAPE)){
+        gameState = MAIN_MENU;
+    }
     switch(currentTower){
         case SNIPER:
             if(player.coins >= sniperTowerCost){
-                DrawRectangle(roundToNearestMutiple((int)mousePos.x - 16, 32), roundToNearestMutiple((int)mousePos.y - 16, 32), 32, 32, (Color){255, 0, 0, 100});
-                if(IsMouseButtonPressed(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
+                DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, 4, WHITE);
+                DrawTextureEx(sniperTowerBaseTexture, roundedMousePos, 0, 2, (Color){255, 255, 255, 100});
+        
+                DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){roundedMousePos.x + 32, roundedMousePos.y + 32, 44, 64},
+                              (Vector2){21.5, 42.5}, 0, (Color){255, 255, 255, 100});
+
+
+                if(IsMouseButtonDown(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
+                    leftMouseDown = true;
+                    for(int i = 0; i < sniperTowerCount; i++){
+                        if(roundedMousePos.x == sniperTowers[i].rect.x && roundedMousePos.y == sniperTowers[i].rect.y){
+                            printf("Tower already placed here\n");
+                            canPlace = false;
+                        }
+                    }
+                    if(canPlace == false){
+                        break;
+                    }
                     player.coins -= sniperTowerCost;
                     spawnSniperTower();
-                    gameState = STORE;
-                    drawGhost = false;
                     printf("Sniper tower placed\n");
+                    if(player.coins < sniperTowerCost){
+                        gameState = STORE;
+                    }
                     break;
                 }
             }
@@ -766,6 +792,7 @@ void handleSniperTowers(){
         bullet.pos.x = sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2;
         bullet.pos.y = sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2;
         bullet.direction = angleBetweenEnemy;
+        sniperTowers[i].lastAngle = angleBetweenEnemy;
        
         bullet.speed = 1000;
         bullet.active = true;
@@ -776,8 +803,18 @@ void handleSniperTowers(){
         bullets[bulletCount] = bullet;
         bulletCount++;
     }
-        DrawRectangle(sniperTowers[i].rect.x, sniperTowers[i].rect.y, sniperTowers[i].rect.width, sniperTowers[i].rect.height, (Color){255, 0, 0, 255});
-    }
+        if(sniperTowers[i].lastAngle < 0){
+            sniperTowers[i].lastAngle += 2 * PI;
+        }
+        if(sniperTowers[i].lastAngle > 2 * PI){
+            sniperTowers[i].lastAngle -= 2 * PI;
+        }
+        DrawTextureEx(sniperTowerBaseTexture, (Vector2){sniperTowers[i].rect.x, sniperTowers[i].rect.y}, 0, 2, WHITE);
+        
+        DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){sniperTowers[i].rect.x + (sniperTowers[i].rect.width / 2),
+                       sniperTowers[i].rect.y + (sniperTowers[i].rect.height / 2),
+                       44, 64}, (Vector2){21.5, 42.5}, radToDeg(sniperTowers[i].lastAngle) + 90, WHITE);
+    }   
     if(sniperTowerTimer >= 1){
         sniperTowerTimer = 0;
     }
@@ -795,8 +832,6 @@ void purchaseSniperTower(){
         printf("Not enough coins\n");
     }
 }
-
-
 
 
 void handleUI(){
