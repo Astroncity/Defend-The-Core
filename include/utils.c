@@ -1,6 +1,14 @@
 #include "utils.h"
 
 
+
+GameState gameState = MAIN_MENU;
+Vector2 mousePos;
+double deltaTime;
+double difficulty = 1;
+
+
+
 void rotateVector2(Vector2* vector, float angle, Vector2 center){
     float s = sin(angle);
     float c = cos(angle);
@@ -56,11 +64,11 @@ int roundToNearestMutiple(int num, int mul){
     }
 }
 
-void drawGrid(int screenWidth, int screenHeight){
-    for(int i = 0; i < screenWidth / 32; i++){
-        DrawLine(i * 64, 0, i * 64, screenHeight, DARKGRAY);
+void drawGrid(int width, int height){
+    for(int i = 0; i < width / 32; i++){
+        DrawLine(i * 64, 0, i * 64, height, DARKGRAY);
     }
-    for(int i = 0; i < screenHeight / 32; i++){
-        DrawLine(0, i * 64, screenWidth, i * 64, DARKGRAY);
+    for(int i = 0; i < height / 32; i++){
+        DrawLine(0, i * 64, width, i * 64, DARKGRAY);
     }
 }

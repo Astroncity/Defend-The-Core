@@ -20,4 +20,4 @@ extern unsigned char coreImage[469];
 extern unsigned char logoImage[10783];
 
 
-#endif
+#endif /*IMAGE_H*/

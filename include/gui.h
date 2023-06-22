@@ -43,4 +43,4 @@ void handleButton(Button* button, Vector2 mousePos, ButtonArgs args);
 Button initButton(Vector2 pos, Rectangle src, Texture2D texture, Vector2 shadow, void (*func)());
 void drawTextShadow(Font font, const char* text, Vector2 pos, int fontSize, Color color);
 
-#endif
+#endif /*GUI_H*/

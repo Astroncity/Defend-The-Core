@@ -4,6 +4,8 @@
 
 #include "raylib.h"
 #include <math.h>
+#define screenWidth 1920
+#define screenHeight 1080
 
 typedef struct Trig{
     Vector2 a;
@@ -11,6 +13,20 @@ typedef struct Trig{
     Vector2 c;
 }Trig;
 
+typedef enum GameState{
+        MAIN_MENU,
+        PLAYING,
+        STORE,
+        SETTINGS,
+        PAUSED,
+        DEAD,
+        PLACING_TOWER
+}GameState;
+
+extern GameState gameState;
+extern Vector2 mousePos;
+extern double deltaTime;
+extern double difficulty;
 
 void rotateVector2(Vector2* vector, float angle, Vector2 center);
 double degToRad(double angle);
@@ -21,4 +37,4 @@ int roundToNearestMutiple(int num, int mul);
 void clamp(double* value, double max);
 void drawGrid();
 
-#endif
+#endif /*UTILS_H*/
