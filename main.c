@@ -118,12 +118,12 @@ int main(void){
     printf("%s", savesFolderPath);
     loadPlayerData();  
     printf("reached 2");
-    //shootSnd = LoadSound("sounds/fire.wav");
-    //selectSnd = LoadSound("sounds/selectSnd.wav");
-    //upgradeSnd = LoadSound("sounds/upgradeSnd.wav");
-    //negativeSnd = LoadSound("sounds/negative.wav");
-    //shotgunSnd = LoadSound("sounds/shotgun.wav");
-    //sniperSnd = LoadSound("sounds/sniper.wav");
+    shootSnd = LoadSound("../sounds/fire.wav");
+    selectSnd = LoadSound("../sounds/selectSnd.wav");
+    upgradeSnd = LoadSound("../sounds/upgradeSnd.wav");
+    negativeSnd = LoadSound("../sounds/negative.wav");
+    shotgunSnd = LoadSound("../sounds/shotgun.wav");
+    sniperSnd = LoadSound("../sounds/sniper.wav");
 
     initMainMenu();
     initStoreMenu();
@@ -203,7 +203,6 @@ int main(void){
         }
         DrawFPS(10, 50);
         drawTextShadow(propagandaFont, TextFormat("Difficulty %.3g", round(difficulty * 100) / 100), (Vector2){(screenWidth / 2) - 300, 20}, 70, WHITE);
-        // draw lines 64x64 apart
         EndDrawing();
 
     }
@@ -219,7 +218,6 @@ void initMainMenu(){
     double midx = screenWidth/2 - 187;
 
 
-    //playButtonTexture = LoadTexture("images/playButton.png");
     playButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", playButtonImage, sizeof(playButtonImage)));
     storeButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", storeButtonImage, sizeof(storeButtonImage)));
     settingsButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", settingsButtonImage, sizeof(settingsButtonImage)));
@@ -234,7 +232,7 @@ void initMainMenu(){
 void playButtonFunc(){
     gameState = PLAYING;
     printf("Play button pressed\n");
-    //PlaySound(upgradeSnd);
+    PlaySound(upgradeSnd);
 }
 void storeButtonFunc(){
     gameState = STORE;
@@ -330,7 +328,7 @@ void shootBasic(Vector2 center, double angleBetweenMouse){
         bullet.index = bulletCount;
         bullets[bulletCount] = bullet;
         bulletCount++;
-        //PlaySound(shootSnd);
+        PlaySound(shootSnd);
     }
     if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON) || (useGamepad && IsGamepadButtonReleased(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2))){
         canShoot = true;
@@ -358,7 +356,7 @@ void shootShotgun(Vector2 center, double angleBetweenMouse){
             bullet.size = 4;
             bullets[bulletCount] = bullet;
             bulletCount++;
-            //PlaySound(shotgunSnd);
+            PlaySound(shotgunSnd);
         }
     }
     if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
@@ -692,11 +690,11 @@ void upgradeDamage(){
         player.damage += 1;
         upgradeDamageCost += 10;
         printf("Damage upgraded to %f\n", player.damage);
-        //PlaySound(upgradeSnd);
+        PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
-        //PlaySound(negativeSnd);
+        PlaySound(negativeSnd);
     }
 }
 
@@ -707,11 +705,11 @@ void upgradeHealth(){
         player.health += 10;
         upgradeHealthCost += 0.5;
         printf("Health upgraded to %f\n", player.maxHealth);
-        //PlaySound(upgradeSnd);
+        PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
-        //PlaySound(negativeSnd);
+        PlaySound(negativeSnd);
     }
 }
 
@@ -719,13 +717,13 @@ void purchaseShotgun(){
     if(player.coins >= shotgunCost){
         player.coins -= shotgunCost;
         shotgunPurchased = true;
-        //PlaySound(upgradeSnd);
+        PlaySound(upgradeSnd);
         printf("Shotgun purchased\n");
-        //PlaySound(upgradeSnd);
+        PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
-        //PlaySound(negativeSnd);
+        PlaySound(negativeSnd);
     }
 }
 
@@ -797,7 +795,7 @@ void placeTower(){
                     player.coins -= sniperTowerCost;
                     spawnSniperTower();
                     printf("Sniper tower placed\n");
-                    //PlaySound(upgradeSnd);
+                    PlaySound(upgradeSnd);
                     if(player.coins < sniperTowerCost){
                         gameState = STORE;
                     }
@@ -806,7 +804,7 @@ void placeTower(){
             }
             else{
                 printf("Not enough coins\n");
-                //PlaySound(negativeSnd);
+                PlaySound(negativeSnd);
                 gameState = STORE;
                 drawGhost = false;
             }
@@ -871,7 +869,7 @@ void handleSniperTowers(){
             bullet.color = MAGENTA;
             bullets[bulletCount] = bullet;
             bulletCount++;
-            //PlaySound(sniperSnd);
+            PlaySound(sniperSnd);
         if(sniperTowers[i].lastAngle < 0){
             sniperTowers[i].lastAngle += 2 * PI;
         }
@@ -893,7 +891,7 @@ void purchaseSniperTower(){
     }
     else{
         printf("Not enough coins\n");
-        //PlaySound(negativeSnd);
+        PlaySound(negativeSnd);
     }
 }
 
@@ -1004,7 +1002,7 @@ int getAppDataPath(){
         if(folderExists(folderPath)){
             printf("Folder already exists: %s\n", folderPath);
             savesFolderPath = folderPath;
-            //free(folderPath);
+            free(folderPath);
             return 0;
         }
         else{
