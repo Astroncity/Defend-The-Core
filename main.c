@@ -1,19 +1,21 @@
 #include "gui.h"
 #include "main.h"
 #include "utils.h"
-#include "lib/raylib.h"
+#include "raylib.h"
+#include "image.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-
+#include <sys/stat.h>
 #define screenWidth 1920
 #define screenHeight 1080
 #define MAX_ENEMIES 1000
-#define MAX_BULLETS 5000
+#define MAX_BULLETS 50000
 #define PELLET_COUNT 5
 #define SHOTGUN_PELLET_SPREAD 4
+#define CORESCALE 8
 
 
 
@@ -29,7 +31,6 @@
  * todo make a game over screen--DONE
  * todo find way to save settings/data--DONE
  *---------------------------------------------**/
-
 
 
 
@@ -63,6 +64,7 @@ bool darkMode = false;
 Vector2 mousePos;
 Vector2 cameraPos = {0,0};  
 Color backgroundColor;
+char* savesFolderPath;
 
 GameState gameState = MAIN_MENU;
 double deltaTime = 0;
@@ -73,16 +75,16 @@ Texture2D backgroundTexture;
 Player player = {100, 100, 2, 10, 1, 90 * PI / 180, 0, (Trig)
                 {(Vector2){screenWidth / 2 - 16, screenHeight / 2}, (Vector2){screenWidth / 2, screenHeight / 2 + 32}, (Vector2){screenWidth / 2 + 16, screenHeight / 2}}};
 
-Core core = {500, 500, (Rectangle){screenWidth / 2 - 16*4, screenHeight / 2 - 16*4, 32*4, 32*4}, BLUE};
+Core core = {500, 500, (Rectangle){screenWidth / 2 - (16 * CORESCALE), screenHeight / 2 - (16 * CORESCALE), 32 * CORESCALE, 32 * CORESCALE}, BLUE};
 Texture2D coreTexture;
 Enemy ENEMIES[MAX_ENEMIES];
 Bullet bullets[MAX_BULLETS];
 Texture2D bulletTexture;
 Rectangle bulletTextureSource = {0, 0, 16, 16};
 SniperTower sniperTowers[520];
+double defaultSniperTowerRange = 500;
 Texture2D sniperTowerBaseTexture;
 Texture2D sniperTowerTurretTexture;
-double sniperTowerTimer = 0;
 Tower currentTower;
 int sniperTowerCost = 100;
 int sniperTowerCount = 0;
@@ -95,16 +97,33 @@ bool shotgunPurchased = false;
 bool leftMouseDown = false;
 bool useGamepad;
 Font propagandaFont;
-
+Sound shootSnd;
+Sound selectSnd;
+Sound upgradeSnd;
+Sound negativeSnd;
+Sound shotgunSnd;
+Sound sniperSnd;
 
 bool drawGhost = false;
 
 int main(void){
-    InitWindow(screenWidth, screenHeight, "raylib [core] example - keyboard input");
-    SetTargetFPS(144);  
-    propagandaFont = LoadFont("fonts/propaganda.ttf");
-
+    InitWindow(screenWidth, screenHeight, "Defend The Core");
+    SetWindowIcon(LoadImageFromMemory(".png", logoImage, sizeof(logoImage)));
+    InitAudioDevice();
+    SetMasterVolume(0.1f);
+    SetTargetFPS(144);
+    getAppDataPath();  
+    //propagandaFont = LoadFont("resources/propaganda.ttf");
+    printf("reached");
+    printf("%s", savesFolderPath);
     loadPlayerData();  
+    printf("reached 2");
+    //shootSnd = LoadSound("sounds/fire.wav");
+    //selectSnd = LoadSound("sounds/selectSnd.wav");
+    //upgradeSnd = LoadSound("sounds/upgradeSnd.wav");
+    //negativeSnd = LoadSound("sounds/negative.wav");
+    //shotgunSnd = LoadSound("sounds/shotgun.wav");
+    //sniperSnd = LoadSound("sounds/sniper.wav");
 
     initMainMenu();
     initStoreMenu();
@@ -119,19 +138,21 @@ int main(void){
 
     player.healthBar = (HealthBar){player.health, player.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, GREEN, RED};
     player.hitbox = (Rectangle){0, 0, 28, 28};
-    core.healthBar = (HealthBar){core.health, core.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 800, 256, 16}, SKYBLUE, RED};
+    core.healthBar = (HealthBar){core.health, core.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 - 800, 512, 48}, SKYBLUE, RED};
     upgradeDamageCost = player.damage * 10;
     upgradeHealthCost = player.maxHealth * 0.5;
+    core.rect.y = roundToNearestMutiple(core.rect.y, 64); 
 
-    bulletTexture = LoadTexture("images/bullet.png");
-    backgroundTexture = LoadTexture("images/background.png");
-    greenLabel = LoadTexture("images/labelGreen.png");
-    greenLabelShort = LoadTexture("images/labelGreenShort.png");
-    greyLabel = LoadTexture("images/labelGrey.png");
-    coin = LoadTexture("images/coin.png");
-    coreTexture = LoadTexture("images/core.png");
-    sniperTowerBaseTexture = LoadTexture("images/sniperTower/sniperBase.png");
-    sniperTowerTurretTexture = LoadTexture("images/sniperTower/sniperGun2x.png");
+
+    bulletTexture = LoadTextureFromImage(LoadImageFromMemory(".png", bulletImage, sizeof(bulletImage)));
+    backgroundTexture = LoadTextureFromImage(LoadImageFromMemory(".png", BackgroundImage, sizeof(BackgroundImage)));
+    greenLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelImage, sizeof(greenLabelImage)));
+    greenLabelShort = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelShortImage, sizeof(greenLabelShortImage)));
+    greyLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greyLabelImage, sizeof(greyLabelImage)));
+    coin = LoadTextureFromImage(LoadImageFromMemory(".png", coinImage, sizeof(coinImage)));
+    coreTexture = LoadTextureFromImage(LoadImageFromMemory(".png", coreImage, sizeof(coreImage)));
+    sniperTowerBaseTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerBaseImage, sizeof(sniperTowerBaseImage)));
+    sniperTowerTurretTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerTurretImage, sizeof(sniperTowerTurretImage)));
 
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
@@ -182,10 +203,12 @@ int main(void){
         }
         DrawFPS(10, 50);
         drawTextShadow(propagandaFont, TextFormat("Difficulty %.3g", round(difficulty * 100) / 100), (Vector2){(screenWidth / 2) - 300, 20}, 70, WHITE);
+        // draw lines 64x64 apart
         EndDrawing();
 
     }
-    CloseWindow();
+    
+    cleanUp();
     savePlayerData();
 
     return 0;
@@ -196,9 +219,10 @@ void initMainMenu(){
     double midx = screenWidth/2 - 187;
 
 
-    playButtonTexture = LoadTexture("images/playButton.png");
-    storeButtonTexture = LoadTexture("images/storeButton.png");
-    settingsButtonTexture = LoadTexture("images/settingsButton.png");
+    //playButtonTexture = LoadTexture("images/playButton.png");
+    playButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", playButtonImage, sizeof(playButtonImage)));
+    storeButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", storeButtonImage, sizeof(storeButtonImage)));
+    settingsButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", settingsButtonImage, sizeof(settingsButtonImage)));
 
     
     playButton = initButton((Vector2){midx, screenHeight/2 - 190}, mainMenuButtonSrc, playButtonTexture, (Vector2){0, 0}, playButtonFunc);
@@ -210,6 +234,7 @@ void initMainMenu(){
 void playButtonFunc(){
     gameState = PLAYING;
     printf("Play button pressed\n");
+    //PlaySound(upgradeSnd);
 }
 void storeButtonFunc(){
     gameState = STORE;
@@ -305,6 +330,7 @@ void shootBasic(Vector2 center, double angleBetweenMouse){
         bullet.index = bulletCount;
         bullets[bulletCount] = bullet;
         bulletCount++;
+        //PlaySound(shootSnd);
     }
     if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON) || (useGamepad && IsGamepadButtonReleased(0, GAMEPAD_BUTTON_RIGHT_TRIGGER_2))){
         canShoot = true;
@@ -332,6 +358,7 @@ void shootShotgun(Vector2 center, double angleBetweenMouse){
             bullet.size = 4;
             bullets[bulletCount] = bullet;
             bulletCount++;
+            //PlaySound(shotgunSnd);
         }
     }
     if(IsMouseButtonReleased(MOUSE_LEFT_BUTTON)){
@@ -351,11 +378,12 @@ void handleCore(){
     }
 
     core.healthBar.rect.x = core.center.x - core.healthBar.rect.width / 2;
-    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 100;
+    core.healthBar.rect.y = core.center.y - core.healthBar.rect.height - 300;
 
 
-    DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y + 5}, 0, 4, (Color){0, 0, 0, 150});
-    DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, 4, WHITE);
+
+    //DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y + 5}, 0, CORESCALE, (Color){0, 0, 0, 150});
+    DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, CORESCALE, WHITE);
     
     //DrawRectangle(core.rect.x, core.rect.y, core.rect.width, core.rect.height, (Color){255, 0, 0, 100});
 
@@ -366,13 +394,31 @@ void handleCore(){
 }
 
 void spawnEnemies(){
-    if(spawnTimer > 1 / (difficulty / 2)){
+    if(spawnTimer > 0.1 / (difficulty / 2)){
+        int side = GetRandomValue(0, 3);
         Enemy enemy;
-        enemy.pos.x = GetRandomValue(0, screenWidth);
-        enemy.pos.y = GetRandomValue(0, screenHeight);
+
+        switch(side){
+            case 0:
+                enemy.pos.x = GetRandomValue(0, screenWidth);
+                enemy.pos.y = 0;
+                break;
+            case 1:
+                enemy.pos.x = GetRandomValue(0, screenWidth);
+                enemy.pos.y = screenHeight;
+                break;
+            case 2:
+                enemy.pos.x = 0;
+                enemy.pos.y = GetRandomValue(0, screenHeight);
+                break;
+            case 3:
+                enemy.pos.x = screenWidth;
+                enemy.pos.y = GetRandomValue(0, screenHeight);
+                break;
+        }
         enemy.speed = GetRandomValue(75, 225);
         enemy.color = RED;
-        enemy.coinValue = GetRandomValue(1, 5);
+        enemy.coinValue = GetRandomValue(10, 25);
         enemy.coinValue *= difficulty;
         enemy.alive = true;
         enemy.damage = GetRandomValue(10, 25);
@@ -386,7 +432,7 @@ void spawnEnemies(){
         
         enemy.healthBar = (HealthBar){enemy.health, enemy.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, RED, BLACK};
 
-        if(enemy.damage > 12.5){
+        if(enemy.damage > 17.5){
             enemy.color = ORANGE;
             enemy.coinValue *= 2;
         }
@@ -426,15 +472,15 @@ void handleEnemies(){
         ENEMIES[i].healthBar.rect.y = ENEMIES[i].pos.y - ENEMIES[i].radius - ENEMIES[i].healthBar.rect.height / 2;
 
         if (CheckCollisionCircleRec(ENEMIES[i].pos, ENEMIES[i].radius, core.rect)){
-            destroyEnemy(i);
             core.health -= ENEMIES[i].damage;
             printf("Core health: %f\n", core.health);
+            destroyEnemy(i);
         }
         if (CheckCollisionCircleRec(ENEMIES[i].pos, ENEMIES[i].radius, player.hitbox)){
-            destroyEnemy(i);
             player.health -= ENEMIES[i].damage;
+            destroyEnemy(i);
         }
-        DrawCircle(ENEMIES[i].pos.x, ENEMIES[i].pos.y, ENEMIES[i].radius, (Color){25 * difficulty, 0, 0, 255});
+        DrawCircle(ENEMIES[i].pos.x, ENEMIES[i].pos.y, ENEMIES[i].radius, ENEMIES[i].color);
         DrawRectangle(ENEMIES[i].healthBar.rect.x, ENEMIES[i].healthBar.rect.y,
                   ENEMIES[i].healthBar.rect.width, ENEMIES[i].healthBar.rect.height, ENEMIES[i].healthBar.backgroundColor);
         DrawRectangle(ENEMIES[i].healthBar.rect.x, ENEMIES[i].healthBar.rect.y,
@@ -442,27 +488,8 @@ void handleEnemies(){
     }
 
 }
-
-int lastUsedEnemySlot(){
-    for(int i = 0; i < MAX_ENEMIES; i++){
-        if(ENEMIES[i].alive == false){
-            return i - 1;
-        }
-    }
-    return -1;
-}
-
-int lastUsedBulletSlot(){
-    for(int i = 0; i < MAX_BULLETS; i++){
-        if(bullets[i].active == false){
-            return i - 1;
-        }
-    }
-    return -1;
-}
-
 void destroyEnemy(int enemyIndex){
-    int lastUsedSlot = lastUsedEnemySlot();
+    int lastUsedSlot = enemyCount - 1;
     if(lastUsedSlot == -1){
         printf("Add more memory dumbass, enemy array full");
         return;
@@ -476,7 +503,7 @@ void destroyEnemy(int enemyIndex){
 }
 
 void destroyBullet(int bulletIndex){
-    int lastUsedSlot = lastUsedBulletSlot();
+    int lastUsedSlot = bulletCount - 1;
     if(lastUsedSlot == -1){
         printf("Add more memory dumbass, bullet array full");
         return;
@@ -552,7 +579,11 @@ void resetGame(){
 
 void savePlayerData(){
     FILE *file;
-    file = fopen("resources/playerData.txt", "w");
+    char* path = malloc(sizeof(char) * 260);
+    char* resourcesName = malloc(sizeof(char) * 50);
+    strcpy(path, savesFolderPath);
+    strcpy(resourcesName, "\\playerData.txt");
+    file = fopen(strcat(path, resourcesName), "w");
     fprintf(file, "%d\n", player.coins);
     fprintf(file, "%f\n", player.damage);
     fprintf(file, "%f\n", player.maxHealth);
@@ -566,13 +597,20 @@ void savePlayerData(){
     }
 
     fclose(file);
+    free(path);
+    free(resourcesName);
 }
 void loadPlayerData(){
     //read player coins from a file ending in .test
     int tempBool;
     int tmpLevel;
     FILE *file;
-    if((file = fopen("resources/playerData.txt", "r")) != NULL)
+    char* path = malloc(sizeof(char) * 260);
+    char* resourcesName = malloc(sizeof(char) * 50);
+    strcpy(path, savesFolderPath);
+    strcpy(resourcesName, "\\playerData.txt");
+    strcat(path, resourcesName);
+    if((file = fopen(path, "r")) != NULL)
         {
             fscanf(file, "%d\n", &player.coins);
             fscanf(file, "%lf\n", &player.damage);
@@ -588,17 +626,20 @@ void loadPlayerData(){
                 sniperTowers[i].rect.height = 64;
                 sniperTowers[i].level = tmpLevel;
                 sniperTowers[i].damage = 10 * tmpLevel;
-                sniperTowers[i].fireRate = 1 - (tmpLevel*0.05);
+                sniperTowers[i].fireRate = 1 - ((tmpLevel - 1) *0.05);
+                sniperTowers[i].range = defaultSniperTowerRange + ((tmpLevel - 1) * 50);
 
             }
 
 
             fclose(file);
             shotgunPurchased = tempBool;
+            free(path);
+            free(resourcesName);
         }
     else
         {
-            file = fopen("resources/playerData.txt", "w");
+            file = fopen(path, "w");
             fprintf(file, "%d\n", 0);
             fprintf(file, "%d\n", 1);
             fprintf(file, "%d\n", 100);
@@ -609,13 +650,15 @@ void loadPlayerData(){
             shotgunPurchased = 0;
             sniperTowerCount = 0;
             fclose(file);
+            free(path);
+            free(resourcesName);
         }
 }
 
 
 void initStoreMenu(){
-    Texture2D tempTexture = LoadTexture("images/upgradeButton.png");
-    upgradeDamageButtonTexture = LoadTexture("images/damageUpgradeIcon.png");
+    Texture2D tempTexture = LoadTextureFromImage(LoadImageFromMemory(".png", upgradeButtonImage, sizeof(upgradeButtonImage)));
+    upgradeDamageButtonTexture = LoadTextureFromImage(LoadImageFromMemory(".png", upgradeDamageButtonImage, sizeof(upgradeDamageButtonImage)));
     Rectangle tempTextureSrc = {0, 0, 110, 54};
 
     upgradeDamageButton = initButton((Vector2){200, screenHeight/2 - 190}, tempTextureSrc, tempTexture, (Vector2){0, 0}, upgradeDamage);
@@ -649,9 +692,11 @@ void upgradeDamage(){
         player.damage += 1;
         upgradeDamageCost += 10;
         printf("Damage upgraded to %f\n", player.damage);
+        //PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
+        //PlaySound(negativeSnd);
     }
 }
 
@@ -662,9 +707,11 @@ void upgradeHealth(){
         player.health += 10;
         upgradeHealthCost += 0.5;
         printf("Health upgraded to %f\n", player.maxHealth);
+        //PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
+        //PlaySound(negativeSnd);
     }
 }
 
@@ -672,10 +719,13 @@ void purchaseShotgun(){
     if(player.coins >= shotgunCost){
         player.coins -= shotgunCost;
         shotgunPurchased = true;
+        //PlaySound(upgradeSnd);
         printf("Shotgun purchased\n");
+        //PlaySound(upgradeSnd);
     }
     else{
         printf("Not enough coins\n");
+        //PlaySound(negativeSnd);
     }
 }
 
@@ -702,37 +752,44 @@ void spawnSniperTower(){
     tower.rect.x = (double)roundToNearestMutiple(towerPosX, 64);
     tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
     tower.fireRate = 1.0f;
+    tower.range = defaultSniperTowerRange;
     tower.damage = 10.0f;
     tower.level = 1;
+    tower.timer = 0;
+
     printf("Sniper tower placed at (%f, %f)\n", tower.rect.x, tower.rect.y);
     sniperTowers[sniperTowerCount] = tower;
     sniperTowerCount++;
 }
 
 void placeTower(){
-    printf("ran\n");
     Vector2 roundedMousePos = (Vector2){roundToNearestMutiple((int)mousePos.x - 32, 64), roundToNearestMutiple((int)mousePos.y - 32, 64)};
     bool canPlace = true;
     if(IsKeyPressed(KEY_ESCAPE)){
         gameState = MAIN_MENU;
     }
+    drawGrid(screenWidth, screenHeight);
     switch(currentTower){
         case SNIPER:
             if(player.coins >= sniperTowerCost){
-                DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, 4, WHITE);
+                DrawTextureEx(coreTexture, (Vector2){core.rect.x, core.rect.y}, 0, CORESCALE, WHITE);
                 DrawTextureEx(sniperTowerBaseTexture, roundedMousePos, 0, 2, (Color){255, 255, 255, 100});
+                DrawCircle(roundedMousePos.x + 32, roundedMousePos.y + 32, defaultSniperTowerRange, (Color){0, 255, 0, 50});
         
                 DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){roundedMousePos.x + 32, roundedMousePos.y + 32, 44, 64},
                               (Vector2){21.5, 42.5}, 0, (Color){255, 255, 255, 100});
 
 
                 if(IsMouseButtonDown(MOUSE_LEFT_BUTTON) && leftMouseDown == false){
-                    leftMouseDown = true;
                     for(int i = 0; i < sniperTowerCount; i++){
                         if(roundedMousePos.x == sniperTowers[i].rect.x && roundedMousePos.y == sniperTowers[i].rect.y){
                             printf("Tower already placed here\n");
                             canPlace = false;
                         }
+                    }
+                    if(CheckCollisionRecs((Rectangle){roundedMousePos.x, roundedMousePos.y, 64, 64}, core.rect)){
+                        printf("Tower too close to core\n");
+                        canPlace = false;
                     }
                     if(canPlace == false){
                         break;
@@ -740,6 +797,7 @@ void placeTower(){
                     player.coins -= sniperTowerCost;
                     spawnSniperTower();
                     printf("Sniper tower placed\n");
+                    //PlaySound(upgradeSnd);
                     if(player.coins < sniperTowerCost){
                         gameState = STORE;
                     }
@@ -748,6 +806,7 @@ void placeTower(){
             }
             else{
                 printf("Not enough coins\n");
+                //PlaySound(negativeSnd);
                 gameState = STORE;
                 drawGhost = false;
             }
@@ -761,63 +820,67 @@ void placeTower(){
 }
 
 void handleSniperTowers(){
-    sniperTowerTimer += GetFrameTime();
+    double angleBetweenEnemy = 0;
     for(int i = 0; i < sniperTowerCount; i++){
-        double shortestDistance;
-        shortestDistance = 1000000;
+        sniperTowers[i].timer += GetFrameTime();
+        DrawTextureEx(sniperTowerBaseTexture, (Vector2){sniperTowers[i].rect.x, sniperTowers[i].rect.y}, 0, 2, WHITE);
+        DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){sniperTowers[i].rect.x + (sniperTowers[i].rect.width / 2),
+                    sniperTowers[i].rect.y + (sniperTowers[i].rect.height / 2),
+                    44, 64}, (Vector2){21.5, 42.5}, radToDeg(sniperTowers[i].lastAngle) + 90, WHITE);
+        if(sniperTowers[i].timer < sniperTowers[i].fireRate - 0.5){
+            continue;
+        }
+        sniperTowers[i].shortestDist = 1000000;
         Enemy closestEnemy;
-        for(int i = 0; i < MAX_ENEMIES; i++){
-            if(ENEMIES[i].alive == false){
+        for(int j = 0; j < MAX_ENEMIES; j++){
+            if(ENEMIES[j].alive == false){
                 break;
             }
             double distanceToEnemy = distance((Vector2){sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2, sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2},
-                                              (Vector2){ENEMIES[i].pos.x, ENEMIES[i].pos.y});
-            if(distanceToEnemy < shortestDistance){
-                shortestDistance = distanceToEnemy;
-                closestEnemy = ENEMIES[i];
+                                              (Vector2){ENEMIES[j].pos.x, ENEMIES[j].pos.y});
+            if(distanceToEnemy < sniperTowers[i].shortestDist){
+                sniperTowers[i].shortestDist = distanceToEnemy;
+                closestEnemy = ENEMIES[j];
             }
-        }   
-        double framesToEnemy = shortestDistance / (1200 * deltaTime);
+        }
+        if(sniperTowers[i].shortestDist > sniperTowers[i].range){
+            continue;
+        }
+        double framesToEnemy = sniperTowers[i].shortestDist / (2500 * deltaTime);
         if(framesToEnemy >= 1){
             closestEnemy.pos.x += cos(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
             closestEnemy.pos.y += sin(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
         }
-        double angleBetweenEnemy = atan2(closestEnemy.pos.y - (sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2), closestEnemy.pos.x - (sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2));
+        angleBetweenEnemy = atan2(closestEnemy.pos.y - (sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2), closestEnemy.pos.x - (sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2));
 
         //DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
         //DrawCircleGradient(closestEnemy.pos.x, closestEnemy.pos.y, 10, (Color){255, 0, 0, 255}, (Color){0, 0, 0, 0});
         //DrawLine(0, sniperTowers[i].rect.y + 25, screenWidth, sniperTowers[i].rect.y + 25, (Color){0, 0, 255, 255});
-    if(sniperTowerTimer >= 1 && lastUsedEnemySlot() != -1){
-        Bullet bullet;
-        bullet.pos.x = sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2;
-        bullet.pos.y = sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2;
-        bullet.direction = angleBetweenEnemy;
-        sniperTowers[i].lastAngle = angleBetweenEnemy;
-       
-        bullet.speed = 1000;
-        bullet.active = true;
-        bullet.index = bulletCount;
-        bullet.size = 6;
-        bullet.damage = sniperTowers[i].damage;
-        bullet.color = MAGENTA;
-        bullets[bulletCount] = bullet;
-        bulletCount++;
-    }
+            sniperTowers[i].timer = 0;
+            Bullet bullet;
+            bullet.pos.x = sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2;
+            bullet.pos.y = sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2;
+            bullet.direction = angleBetweenEnemy;
+            sniperTowers[i].lastAngle = angleBetweenEnemy;
+
+            bullet.speed = 2500;
+            bullet.active = true;
+            bullet.index = bulletCount;
+            bullet.size = 6;
+            bullet.damage = sniperTowers[i].damage;
+            bullet.color = MAGENTA;
+            bullets[bulletCount] = bullet;
+            bulletCount++;
+            //PlaySound(sniperSnd);
         if(sniperTowers[i].lastAngle < 0){
             sniperTowers[i].lastAngle += 2 * PI;
         }
         if(sniperTowers[i].lastAngle > 2 * PI){
             sniperTowers[i].lastAngle -= 2 * PI;
         }
-        DrawTextureEx(sniperTowerBaseTexture, (Vector2){sniperTowers[i].rect.x, sniperTowers[i].rect.y}, 0, 2, WHITE);
-        
-        DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){sniperTowers[i].rect.x + (sniperTowers[i].rect.width / 2),
-                       sniperTowers[i].rect.y + (sniperTowers[i].rect.height / 2),
-                       44, 64}, (Vector2){21.5, 42.5}, radToDeg(sniperTowers[i].lastAngle) + 90, WHITE);
+        sniperTowers[i].shortestDist = 1000000;
+        angleBetweenEnemy = 0;
     }   
-    if(sniperTowerTimer >= 1){
-        sniperTowerTimer = 0;
-    }
 }
 
 
@@ -830,6 +893,7 @@ void purchaseSniperTower(){
     }
     else{
         printf("Not enough coins\n");
+        //PlaySound(negativeSnd);
     }
 }
 
@@ -887,4 +951,94 @@ void handleSniperTowerGUI(){
         // draw a green rectangle above the tower
         DrawRectangle(closestTower.rect.x, closestTower.rect.y - 50, 50, 50, (Color){0, 255, 0, 255});
     }
+}
+
+
+void cleanUp(){
+    UnloadTexture(greyLabel);
+    UnloadTexture(coin);
+    UnloadTexture(sniperTowerBaseTexture);
+    UnloadTexture(sniperTowerTurretTexture);
+    UnloadTexture(upgradeDamageButtonTexture);
+    UnloadTexture(upgradeHealthButtonTexture);
+    UnloadTexture(coreTexture);
+    UnloadTexture(bulletTexture);
+    UnloadTexture(backgroundTexture);
+    UnloadSound(negativeSnd);
+    UnloadSound(shotgunSnd);
+    UnloadSound(selectSnd);
+    UnloadSound(upgradeSnd);
+    UnloadSound(shootSnd);
+    UnloadSound(sniperSnd);
+    CloseAudioDevice();
+    CloseWindow();
+}
+
+int folderExists(const char* folderPath) {
+    struct stat info;
+    return stat(folderPath, &info) == 0 && S_ISDIR(info.st_mode);
+}
+
+
+int getAppDataPath(){
+    const char* appdata = getenv("LOCALAPPDATA");
+    if(appdata == NULL){
+        printf("Error: Unable to access the appdata folder.\n");
+        return 1;
+    }
+
+    // Create the folder name
+    const char* folderNameM = "DefendTheCore";
+    const char* folderName = "resourcess";
+
+    size_t pathLengthM = strlen(appdata) + strlen(folderNameM) + 2; // +2 for '\' and null terminator
+    size_t pathLength = strlen(appdata) + strlen(folderNameM) + strlen(folderName) + 2; // +2 for '\' and null terminator
+
+    char* folderPathM = (char*)calloc(pathLengthM, sizeof(char));
+    char* folderPath = (char*)calloc(pathLength, sizeof(char));
+
+    snprintf(folderPathM, pathLengthM, "%s\\%s", appdata, folderNameM);
+    snprintf(folderPath, pathLength, "%s\\%s\\%s", appdata, folderNameM, folderName);
+
+    if (folderExists(folderPathM)){
+        if(folderExists(folderPath)){
+            printf("Folder already exists: %s\n", folderPath);
+            savesFolderPath = folderPath;
+            //free(folderPath);
+            return 0;
+        }
+        else{
+            int result = mkdir(folderPath);
+
+            if(result == 0){
+                printf("Folder created/accessed successfully: %s\n", folderPath);
+            } 
+            else{
+                printf("Error: Failed to create/access folder: %s\n", folderPath);
+            }
+        }
+    }
+    else{
+        int result = mkdir(folderPathM);
+
+        if(result == 0){
+            printf("Folder created/accessed successfully: %s\n", folderPathM);
+        } 
+        else{
+            printf("Error: Failed to create/access folder: %s\n", folderPathM);
+        }
+        result = mkdir(folderPath);
+
+        if(result == 0){
+            printf("Folder created/accessed successfully: %s\n", folderPath);
+        } 
+        else{
+            printf("Error: Failed to create/access folder: %s\n", folderPath);
+        }
+    }
+
+    savesFolderPath = folderPath;
+    free(folderPath);
+    free(folderPathM);
+    return 0;
 }

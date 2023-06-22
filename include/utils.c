@@ -40,8 +40,8 @@ void clamp(double* value, double max){
 
 
 double distance(Vector2 p1, Vector2 p2){
-    double x = p1.x - p2.x;
-    double y = p1.y - p2.y;
+    double x = abs(p1.x - p2.x);
+    double y = abs(p1.y - p2.y);
     double distance = sqrt(x*x + y*y);
     return distance;
 }
@@ -56,3 +56,11 @@ int roundToNearestMutiple(int num, int mul){
     }
 }
 
+void drawGrid(int screenWidth, int screenHeight){
+    for(int i = 0; i < screenWidth / 32; i++){
+        DrawLine(i * 64, 0, i * 64, screenHeight, DARKGRAY);
+    }
+    for(int i = 0; i < screenHeight / 32; i++){
+        DrawLine(0, i * 64, screenWidth, i * 64, DARKGRAY);
+    }
+}
