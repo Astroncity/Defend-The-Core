@@ -1,4 +1,4 @@
-#include "../lib/raylib.h"
+#include "raylib.h"
 #include "utils.h"
 
 typedef enum GameState{
@@ -13,7 +13,6 @@ typedef enum GameState{
 
 typedef struct SniperTower{
     double damage;
-    double attackSpeed;
     double range;
     double direction;
     double fireRate;
@@ -22,6 +21,8 @@ typedef struct SniperTower{
     int index;
     int level;
     double lastAngle;
+    double timer;
+    double shortestDist;
 }SniperTower;
 
 
@@ -110,3 +111,6 @@ void handleSniperTowers();
 void handleUI();
 void addCommas(int number, char* resultStr);
 void handleSniperTowerGUI();
+void cleanUp(); 
+int folderExists(const char* folderPath);
+int getAppDataPath();

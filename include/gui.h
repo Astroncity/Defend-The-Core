@@ -2,7 +2,7 @@
 #ifndef GUI_H
 #define GUI_H
 
-#include "../lib/raylib.h"
+#include "raylib.h"
 
 
 typedef enum Tower{
