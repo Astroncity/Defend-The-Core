@@ -4,6 +4,7 @@
 
 GameState gameState = MAIN_MENU;
 Vector2 mousePos;
+Vector2 virtualMousePos = {0, 0};
 double deltaTime;
 double difficulty = 1;
 
@@ -71,4 +72,22 @@ void drawGrid(int width, int height){
     for(int i = 0; i < height / 32; i++){
         DrawLine(0, i * 64, width, i * 64, DARKGRAY);
     }
+}
+
+
+Vector2 vector2Clamp(Vector2 v, Vector2 min, Vector2 max){
+    Vector2 result = v;
+    if(result.x < min.x){
+        result.x = min.x;
+    }
+    if(result.x > max.x){
+        result.x = max.x;
+    }
+    if(result.y < min.y){
+        result.y = min.y;
+    }
+    if(result.y > max.y){
+        result.y = max.y;
+    }
+    return result;
 }

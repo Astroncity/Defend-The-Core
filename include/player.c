@@ -1,7 +1,7 @@
 #include "player.h"
 #include "../main.h"
 #include "bullet.h"
-
+#include "utils.h"
 
 
 
@@ -13,7 +13,7 @@ bool shotgunPurchased = false;
 void handlePlayer(){
     Vector2 center = {(player.trig.a.x + player.trig.b.x + player.trig.c.x) / 3, (player.trig.a.y + player.trig.b.y + player.trig.c.y) / 3};
     player.center = center;
-    double angleBetweenMouse = atan2(mousePos.y - center.y, mousePos.x - center.x);
+    double angleBetweenMouse = atan2(virtualMousePos.y - center.y, virtualMousePos.x - center.x);
     double angDiff = angleBetweenMouse - player.direction;
 
     if(radToDeg(angleBetweenMouse) > 360){player.direction -= degToRad(360);}

@@ -8,6 +8,7 @@
 #include "font.h"
 #include "player.h"
 #include "enemyBasic.h"
+#include "particleSystem.h"
 #include "core.h"
 #include <math.h>
 #include <stdio.h>
@@ -15,6 +16,15 @@
 #include <string.h>
 #include <stdbool.h>
 #include <sys/stat.h>
+#define PLATFORM_DESKTOP
+#if defined(PLATFORM_DESKTOP)
+    #define GLSL_VERSION            330
+#else   // PLATFORM_RPI, PLATFORM_ANDROID, PLATFORM_WEB
+    #define GLSL_VERSION            100
+#endif
+
+#define MAX(a, b) ((a)>(b)? (a) : (b))
+#define MIN(a, b) ((a)<(b)? (a) : (b))
 
 
 
@@ -76,10 +86,21 @@ Sound negativeSnd;
 
 bool drawGhost = false;
 bool firstTime = true;
+bool f11Down = false;
 
+
+
+
+ParticleSystem testSys;
+Shader shader;
 int main(void){
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(screenWidth, screenHeight, "Defend The Core");
     SetWindowIcon(LoadImageFromMemory(".png", logoImage, sizeof(logoImage)));
+
+    RenderTexture2D target = LoadRenderTexture(screenWidth, screenHeight);
+    SetTextureFilter(target.texture, TEXTURE_FILTER_BILINEAR);  // Texture scale filter to use
+
     InitAudioDevice();
     SetMasterVolume(0.1f);
     SetTargetFPS(144);
@@ -91,6 +112,7 @@ int main(void){
     strcat(fontpath, "\\propaganda.ttf");
     loadPlayerData();  
     printf("reached 2");
+    shader = LoadShader(0, TextFormat("glow.frag", GLSL_VERSION));
     //shootSnd = LoadSound("sounds/fire.wav");
     //selectSnd = LoadSound("sounds/selectSnd.wav");
     //upgradeSnd = LoadSound("sounds/upgradeSnd.wav");
@@ -128,20 +150,34 @@ int main(void){
     sniperTowerBaseTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerBaseImage, sizeof(sniperTowerBaseImage)));
     sniperTowerTurretTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerTurretImage, sizeof(sniperTowerTurretImage)));
 
+    initParticleSystem(&testSys, (Vector2){screenWidth / 2, screenHeight / 2}, (Vector2){200, 200}, (Vector2){2,2}, 1, 0.25, 10, ORANGE, (ParticleType){RECT});
+
+
+
     while (!WindowShouldClose()){
         mousePos = GetMousePosition();
         if(IsMouseButtonUp(MOUSE_LEFT_BUTTON)) leftMouseDown = false;
-        BeginDrawing();
+        BeginTextureMode(target);
         ClearBackground(backgroundColor);
         deltaTime = GetFrameTime();
         runtime += deltaTime;
+        float scale = MIN((float)GetScreenWidth()/screenWidth, (float)GetScreenHeight()/screenHeight);
+        virtualMousePos.x = (mousePos.x - (GetScreenWidth() - (screenWidth*scale))*0.5f)/scale;
+        virtualMousePos.y = (mousePos.y - (GetScreenHeight() - (screenHeight*scale))*0.5f)/scale;
+        virtualMousePos = vector2Clamp(virtualMousePos, (Vector2){0, 0}, (Vector2){(float)screenWidth, (float)screenHeight});
+        if(IsKeyPressed(KEY_F11) && !f11Down){
+            ToggleFullscreen();
+        }
+        else{
+            f11Down = false;
+        }
 
         switch(gameState){
             case MAIN_MENU:
                 ButtonArgs args;
-                handleButton(&playButton, mousePos, args);
-                handleButton(&storeButton, mousePos, args);
-                handleButton(&settingsButton, mousePos, args);
+                handleButton(&playButton, virtualMousePos, args);
+                handleButton(&storeButton, virtualMousePos, args);
+                handleButton(&settingsButton, virtualMousePos, args);
                 break;
             case PLAYING:
                 DrawTexture(backgroundTexture, 0, 0, WHITE);
@@ -152,10 +188,12 @@ int main(void){
                 handleCore();
                 handlePlayer();
                 handleBullets();
+                //handleParticleSystem(&testSys);
                 handleUI();
                 handleSniperTowerGUI();
                 if(IsKeyPressed(KEY_ESCAPE)){
-                    gameState = STORE;
+                    gameState = MAIN_MENU;
+                    difficulty = 1;
                 }
                 break;
             case STORE:
@@ -177,11 +215,21 @@ int main(void){
         }
         DrawFPS(10, 50);
         drawTextShadow(propagandaFont, TextFormat("Difficulty %.3g", round(difficulty * 100) / 100), (Vector2){(screenWidth / 2) - 300, 20}, 70, WHITE);
+        EndTextureMode();
+        BeginDrawing();
+            ClearBackground(BLACK);     // Clear screen background
+
+            // Draw render texture to screen, properly scaled
+            DrawTexturePro(target.texture, (Rectangle){ 0.0f, 0.0f, (float)target.texture.width, (float)-target.texture.height },
+                           (Rectangle){ (GetScreenWidth() - ((float)screenWidth*scale))*0.5f, (GetScreenHeight() - ((float)screenHeight*scale))*0.5f,
+                           (float)screenWidth*scale, (float)screenHeight*scale }, (Vector2){ 0, 0 }, 0.0f, WHITE);
         EndDrawing();
+
 
     }
     
     cleanUp();
+    cleanParticleSystem(&testSys);
     savePlayerData();
 
     return 0;
@@ -348,17 +396,17 @@ void initStoreMenu(){
 
 void handleStore(){
     
-    handleButton(&upgradeDamageButton, mousePos, (ButtonArgs){0});
+    handleButton(&upgradeDamageButton, virtualMousePos, (ButtonArgs){0});
     DrawTextureEx(upgradeDamageButtonTexture, (Vector2){upgradeDamageButton.pos.x + 375, upgradeDamageButton.pos.y + 14}, 0, 2.5, WHITE);
     drawTextShadow(propagandaFont, TextFormat("%d", (int)player.damage), (Vector2){upgradeDamageButton.pos.x + 375, upgradeDamageButton.pos.y - 64}, 80, RED);
     DrawTextureEx(greenLabelShort, (Vector2){upgradeDamageButton.pos.x + 550, upgradeDamageButton.pos.y + 10}, 0, 4, WHITE);
     drawTextShadow(propagandaFont, TextFormat("%d", (int)upgradeDamageCost), (Vector2){upgradeDamageButton.pos.x + 600, upgradeDamageButton.pos.y + 42}, 80, BLACK);
-    handleButton(&upgradeHealthButton, mousePos, (ButtonArgs){0});
-    handleButton(&sniperTowerButton, mousePos, (ButtonArgs){0});
+    handleButton(&upgradeHealthButton, virtualMousePos, (ButtonArgs){0});
+    handleButton(&sniperTowerButton, virtualMousePos, (ButtonArgs){0});
     
 
     if(shotgunPurchased == false){
-        handleButton(&shotgunButton, mousePos, (ButtonArgs){SNIPER});
+        handleButton(&shotgunButton, virtualMousePos, (ButtonArgs){SNIPER});
     }
     if(IsKeyPressed(KEY_ESCAPE)){
         gameState = MAIN_MENU;
@@ -420,7 +468,7 @@ void scaleDifficulty(double runtime){
 }
 
 void placeTower(){
-    Vector2 roundedMousePos = (Vector2){roundToNearestMutiple((int)mousePos.x - 32, 64), roundToNearestMutiple((int)mousePos.y - 32, 64)};
+    Vector2 roundedMousePos = (Vector2){roundToNearestMutiple((int)virtualMousePos.x - 32, 64), roundToNearestMutiple((int)virtualMousePos.y - 32, 64)};
     bool canPlace = true;
     if(IsKeyPressed(KEY_ESCAPE)){
         gameState = MAIN_MENU;
@@ -618,6 +666,17 @@ int getAppDataPath(){
 }
 
 
+
+
+
+
+
+
+
+
+
+
+
 /*void loadSounds(){
     FILE *file;
     char* resPath = savesFolderPath;
@@ -625,3 +684,4 @@ int getAppDataPath(){
     mkdir(soundsFolderPath);
 
 }*/
+

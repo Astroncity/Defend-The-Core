@@ -25,6 +25,7 @@ typedef enum GameState{
 
 extern GameState gameState;
 extern Vector2 mousePos;
+extern Vector2 virtualMousePos;
 extern double deltaTime;
 extern double difficulty;
 
@@ -36,5 +37,6 @@ double distance(Vector2 p1, Vector2 p2);
 int roundToNearestMutiple(int num, int mul);
 void clamp(double* value, double max);
 void drawGrid();
+Vector2 vector2Clamp(Vector2 v, Vector2 min, Vector2 max);
 
 #endif /*UTILS_H*/

@@ -21,8 +21,8 @@ void spawnSniperTower(){
     tower.rect.height = 64;
     tower.rect.width = 64;
 
-    int towerPosX = mousePos.x - (tower.rect.width / 2);
-    int towerPosY = mousePos.y - (tower.rect.height / 2);
+    int towerPosX = virtualMousePos.x - (tower.rect.width / 2);
+    int towerPosY = virtualMousePos.y - (tower.rect.height / 2);
 
     tower.rect.x = (double)roundToNearestMutiple(towerPosX, 64);
     tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
