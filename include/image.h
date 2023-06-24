@@ -18,6 +18,7 @@ extern unsigned char sniperTowerTurretImage[782];
 extern unsigned char upgradeButtonImage[709];
 extern unsigned char coreImage[469];
 extern unsigned char logoImage[10783];
+extern unsigned char enemySplitterImage[446];
 
 
 #endif /*IMAGE_H*/

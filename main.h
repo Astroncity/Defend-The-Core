@@ -27,3 +27,4 @@ void handleSniperTowerGUI();
 void cleanUp(); 
 int folderExists(const char* folderPath);
 int getAppDataPath();
+void loadTextures();

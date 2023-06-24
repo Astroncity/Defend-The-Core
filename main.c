@@ -8,6 +8,7 @@
 #include "font.h"
 #include "player.h"
 #include "enemyBasic.h"
+#include "enemySplitter.h"
 #include "particleSystem.h"
 #include "core.h"
 #include <math.h>
@@ -83,7 +84,7 @@ Font propagandaFont;
 Sound selectSnd;
 Sound upgradeSnd;
 Sound negativeSnd;
-
+double saveDataTimer;
 bool drawGhost = false;
 bool firstTime = true;
 bool f11Down = false;
@@ -139,16 +140,7 @@ int main(void){
     upgradeHealthCost = player.maxHealth * 0.5;
     core.rect.y = roundToNearestMutiple(core.rect.y, 64); 
 
-
-    bulletTexture = LoadTextureFromImage(LoadImageFromMemory(".png", bulletImage, sizeof(bulletImage)));
-    backgroundTexture = LoadTextureFromImage(LoadImageFromMemory(".png", BackgroundImage, sizeof(BackgroundImage)));
-    greenLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelImage, sizeof(greenLabelImage)));
-    greenLabelShort = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelShortImage, sizeof(greenLabelShortImage)));
-    greyLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greyLabelImage, sizeof(greyLabelImage)));
-    coin = LoadTextureFromImage(LoadImageFromMemory(".png", coinImage, sizeof(coinImage)));
-    coreTexture = LoadTextureFromImage(LoadImageFromMemory(".png", coreImage, sizeof(coreImage)));
-    sniperTowerBaseTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerBaseImage, sizeof(sniperTowerBaseImage)));
-    sniperTowerTurretTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerTurretImage, sizeof(sniperTowerTurretImage)));
+    loadTextures();
 
     initParticleSystem(&testSys, (Vector2){screenWidth / 2, screenHeight / 2}, (Vector2){200, 200}, (Vector2){2,2}, 1, 0.25, 10, ORANGE, (ParticleType){RECT});
 
@@ -161,6 +153,7 @@ int main(void){
         ClearBackground(backgroundColor);
         deltaTime = GetFrameTime();
         runtime += deltaTime;
+        saveDataTimer += deltaTime;
         float scale = MIN((float)GetScreenWidth()/screenWidth, (float)GetScreenHeight()/screenHeight);
         virtualMousePos.x = (mousePos.x - (GetScreenWidth() - (screenWidth*scale))*0.5f)/scale;
         virtualMousePos.y = (mousePos.y - (GetScreenHeight() - (screenHeight*scale))*0.5f)/scale;
@@ -170,6 +163,10 @@ int main(void){
         }
         else{
             f11Down = false;
+        }
+        if(saveDataTimer >= 5){
+            savePlayerData();
+            saveDataTimer = 0;
         }
 
         switch(gameState){
@@ -181,8 +178,10 @@ int main(void){
                 break;
             case PLAYING:
                 DrawTexture(backgroundTexture, 0, 0, WHITE);
-                handleEnemies();
-                spawnEnemies();
+                handleBasicEnemies();
+                handleSplitterEnemies();
+                spawnBasicEnemies();
+                spawnSplitterEnemies();
                 scaleDifficulty(runtime);
                 handleSniperTowers();
                 handleCore();
@@ -278,19 +277,19 @@ void resetGame(){
     player.health = player.maxHealth;
     core.health = core.maxHealth;
     player.center = (Vector2){screenWidth / 2, screenHeight / 2};
-    for(int i = 0; i < MAX_ENEMIES; i++){
-        if(ENEMIES[i].alive == false){
-            break;
-        }
-        ENEMIES[i] = (Enemy){(Vector2){0, 0}, 0, 0, 0, 0, (Color){0, 0, 0, 0}, false};
+    for(int i = 0; i < enemyCountBasic; i++){
+        BasicEnemies[i] = (BasicEnemy){};
     }
+
+    for(int i = 0; i < enemyCountSplitter; i++){
+        SplitterEnemies[i] = (SplitterEnemy){};
+    }
+
     for(int i = 0; i < MAX_BULLETS; i++){
-        if(bullets[i].active == false){
-            break;
-        }
-        bullets[i] = (Bullet){0, 0, (Vector2){0, 0}, false};
+        bullets[i] = (Bullet){};
     }
-    enemyCount = 0;
+    enemyCountBasic = 0;
+    enemyCountSplitter = 0;
     bulletCount = 0;
     difficulty = 1;
 }
@@ -586,6 +585,7 @@ void cleanUp(){
     UnloadTexture(coreTexture);
     UnloadTexture(bulletTexture);
     UnloadTexture(backgroundTexture);
+    UnloadTexture(splitterEnemyTexture);
     UnloadSound(negativeSnd);
     UnloadSound(shotgunSnd);
     UnloadSound(selectSnd);
@@ -685,3 +685,15 @@ int getAppDataPath(){
 
 }*/
 
+void loadTextures(){
+    bulletTexture = LoadTextureFromImage(LoadImageFromMemory(".png", bulletImage, sizeof(bulletImage)));
+    backgroundTexture = LoadTextureFromImage(LoadImageFromMemory(".png", BackgroundImage, sizeof(BackgroundImage)));
+    greenLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelImage, sizeof(greenLabelImage)));
+    greenLabelShort = LoadTextureFromImage(LoadImageFromMemory(".png", greenLabelShortImage, sizeof(greenLabelShortImage)));
+    greyLabel = LoadTextureFromImage(LoadImageFromMemory(".png", greyLabelImage, sizeof(greyLabelImage)));
+    coin = LoadTextureFromImage(LoadImageFromMemory(".png", coinImage, sizeof(coinImage)));
+    coreTexture = LoadTextureFromImage(LoadImageFromMemory(".png", coreImage, sizeof(coreImage)));
+    sniperTowerBaseTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerBaseImage, sizeof(sniperTowerBaseImage)));
+    sniperTowerTurretTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerTurretImage, sizeof(sniperTowerTurretImage)));
+    splitterEnemyTexture = LoadTextureFromImage(LoadImageFromMemory(".png", enemySplitterImage, sizeof(enemySplitterImage)));
+}

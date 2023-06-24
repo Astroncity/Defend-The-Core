@@ -34,17 +34,17 @@ void handleButton(Button* button, Vector2 mousePos, ButtonArgs args){
 
 
 void handleButtonTower(Button* button, Tower tower, Vector2 mousePos){
-    DrawTextureEx(button -> texture, button -> pos, 0, button -> scale, button -> tint);
+    DrawTextureEx(button->texture, button->pos, 0, button->scale, button->tint);
 
-    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> hitbox.x, button -> hitbox.y,
-                               button -> hitbox.width, button -> hitbox.height})){
+    if (CheckCollisionPointRec(mousePos, (Rectangle){button->hitbox.x, button->hitbox.y,
+                               button->hitbox.width, button->hitbox.height})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-            button -> func(tower);
+            button->func(tower);
         }
-        button -> tint = BLUE;
+        button->tint = BLUE;
     }
     else{
-        button -> tint = WHITE;
+        button->tint = WHITE;
     }
 
 }
@@ -57,17 +57,17 @@ void drawTextShadow(Font font, const char* text, Vector2 pos, int fontSize, Colo
 }
 
 void handleButtonNorm(Button* button, Vector2 mousePos){
-    DrawTextureEx(button -> texture, button -> pos, 0, button -> scale, button -> tint);
+    DrawTextureEx(button->texture, button->pos, 0, button->scale, button->tint);
 
-    if (CheckCollisionPointRec(mousePos, (Rectangle){button -> hitbox.x, button -> hitbox.y,
-                               button -> hitbox.width, button -> hitbox.height})){
+    if (CheckCollisionPointRec(mousePos, (Rectangle){button->hitbox.x, button->hitbox.y,
+                               button->hitbox.width, button->hitbox.height})){
         if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-            button -> func();
+            button->func();
         }
-        button -> tint = BLUE;
+        button->tint = BLUE;
     }
     else{
-        button -> tint = WHITE;
+        button->tint = WHITE;
     }
 
 }

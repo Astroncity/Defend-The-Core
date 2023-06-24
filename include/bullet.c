@@ -1,6 +1,7 @@
 #include "bullet.h"
 #include "player.h"
 #include "enemyBasic.h"
+#include "enemySplitter.h"
 #include <stdio.h> 
 
 
@@ -12,6 +13,8 @@ Texture2D bulletTexture;
 Bullet bullets[MAX_BULLETS];
 Rectangle bulletTextureSource = {0, 0, 16, 16};
 
+static void checkCollisionBasic(Bullet bullet);
+static void checkCollisionSplitter(Bullet bullet);
 
 void shootBasic(Vector2 center, double angleBetweenMouse){
     bool canShoot = true;
@@ -49,7 +52,8 @@ void shootShotgun(Vector2 center, double angleBetweenMouse){
             Bullet bullet;
             bullet.pos.x = center.x;
             bullet.pos.y = center.y;
-            bullet.direction = angleBetweenMouse - degToRad(PELLET_COUNT + i * SHOTGUN_PELLET_SPREAD) + degToRad(PELLET_COUNT * SHOTGUN_PELLET_SPREAD / 2) + degToRad(PELLET_COUNT*0.6);
+            bullet.direction = angleBetweenMouse - degToRad(PELLET_COUNT + i * SHOTGUN_PELLET_SPREAD)
+                                + degToRad(PELLET_COUNT * SHOTGUN_PELLET_SPREAD / 2) + degToRad(PELLET_COUNT*0.6) + degToRad(GetRandomValue(-1, 1));
             bullet.speed = 750;
             bullet.active = true;
             bullet.index = bulletCount;
@@ -101,14 +105,29 @@ void handleBullets(){
             destroyBullet(i);
         }
 
-        for(int j = 0; j < MAX_ENEMIES; j++){
-            if(ENEMIES[j].alive == false){
-                break;
-            }
-            if(CheckCollisionCircles(ENEMIES[j].pos, 10, bullets[i].pos, bullets[i].size)){
-                ENEMIES[j].health -= bullets[i].damage;
-                destroyBullet(i);
-            }
+        checkCollisionBasic(bullets[i]);
+        checkCollisionSplitter(bullets[i]);
+        
+    }
+}
+
+
+
+static void checkCollisionBasic(Bullet bullet){
+    for(int j = 0; j < enemyCountBasic; j++){
+        if(CheckCollisionCircles(BasicEnemies[j].pos, 10, bullet.pos, bullet.size)){
+            BasicEnemies[j].health -= bullet.damage;
+            destroyBullet(bullet.index);
+        }
+    }
+}
+
+
+static void checkCollisionSplitter(Bullet bullet){
+    for(int j = 0; j < enemyCountSplitter; j++){
+        if(CheckCollisionCircles(SplitterEnemies[j].pos, 10, bullet.pos, bullet.size)){
+            SplitterEnemies[j].health -= bullet.damage;
+            destroyBullet(bullet.index);
         }
     }
 }

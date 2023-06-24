@@ -2,7 +2,8 @@
 #define SNIPERTOWER_H
 
 #include "raylib.h"
-
+#include "enemyBasic.h"
+#define MAX_SNIPER_TOWERS 520
 
 typedef struct SniperTower{
     double damage;
@@ -18,10 +19,15 @@ typedef struct SniperTower{
     double shortestDist;
 }SniperTower;
 
+typedef struct GeneralEnemy{
+    Vector2 pos;
+    double direction;
+    double speed;
+}GeneralEnemy;
 
 extern double defaultSniperTowerRange;
 extern int sniperTowerCount;
-extern SniperTower sniperTowers[520];
+extern SniperTower sniperTowers[MAX_SNIPER_TOWERS];
 extern Texture2D sniperTowerBaseTexture;
 extern Texture2D sniperTowerTurretTexture;
 extern Sound sniperSnd;

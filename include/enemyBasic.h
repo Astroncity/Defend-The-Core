@@ -3,8 +3,9 @@
 
 #include "raylib.h"
 #include "gui.h"
-#define MAX_ENEMIES 1000
-typedef struct Enemy{
+#define MAX_BASIC_ENEMIES 1000
+#define BASIC_SPAWN_RATE 0.5
+typedef struct BasicEnemy{
     Vector2 pos;
     double health;
     double maxHealth;
@@ -17,16 +18,16 @@ typedef struct Enemy{
     HealthBar healthBar;
     int radius;
     double direction;
-}Enemy;
+}BasicEnemy;
 
 
-extern Enemy ENEMIES[MAX_ENEMIES];
-extern int enemyCount;
-extern double spawnTimer;
+extern BasicEnemy BasicEnemies[MAX_BASIC_ENEMIES];
+extern int enemyCountBasic;
+extern double spawnTimerBasic;
 
 
-void spawnEnemies();
-void handleEnemies();
-void destroyEnemy(int enemyIndex);
+void spawnBasicEnemies();
+void handleBasicEnemies();
+void destroyBasicEnemy(int enemyIndex);
 
 #endif /*ENEMYBASIC_H*/

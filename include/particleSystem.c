@@ -8,12 +8,12 @@
 
 void handleParticleSystem(ParticleSystem* system){
     printf("handling particle system\n");
-    system -> time += deltaTime;
+    system->time += deltaTime;
     emitParticles(system);
-    for(int i = 0; i < system -> particleCount; i++){
-        switch(system -> type){
+    for(int i = 0; i < system->particleCount; i++){
+        switch(system->type){
             case RECT:
-                handleParticleRect(system, &system -> particles[i]);
+                handleParticleRect(system, &system->particles[i]);
                 break;
             case CIRCLE:
                 break;
@@ -25,24 +25,24 @@ void handleParticleSystem(ParticleSystem* system){
 
 
 void emitParticles(ParticleSystem* system){
-    if(system -> time > system -> rate){
-        system -> time = 0;
-        switch(system -> type){
+    if(system->time > system->rate){
+        system->time = 0;
+        switch(system->type){
             case RECT:
                 Particle particle;
-                particle.rect = (Rectangle){system -> initPos.x, system -> initPos.y, system -> size, system -> size};
-                particle.rect.x = system -> initPos.x + GetRandomValue(-20, 20);
-                particle.rect.y = system -> initPos.y + GetRandomValue(-20, 20);
-                particle.index = system -> particleCount;
-                particle.maxLife = system -> maxLife;
+                particle.rect = (Rectangle){system->initPos.x, system->initPos.y, system->size, system->size};
+                particle.rect.x = system->initPos.x + GetRandomValue(-20, 20);
+                particle.rect.y = system->initPos.y + GetRandomValue(-20, 20);
+                particle.index = system->particleCount;
+                particle.maxLife = system->maxLife;
                 particle.life = 0;
                 particle.radius = 0;
-                particle.color = system -> color;
-                particle.initVel = system -> initVel;
-                particle.acceleration = system -> acceleration;
-                system -> particles[system -> particleCount] = particle;
-                system -> particleCount++;
-                //system -> particles = realloc(system -> particles, sizeof(Particle) * system -> particleCount);
+                particle.color = system->color;
+                particle.initVel = system->initVel;
+                particle.acceleration = system->acceleration;
+                system->particles[system->particleCount] = particle;
+                system->particleCount++;
+                //system->particles = realloc(system->particles, sizeof(Particle) * system->particleCount);
                 break;
             case CIRCLE:
                 break;
@@ -54,16 +54,16 @@ void emitParticles(ParticleSystem* system){
 
 
 void initParticleSystem(ParticleSystem* system, Vector2 initPos, Vector2 initVel, Vector2 acceleration, double lifeSpan, float rate, float size, Color color, ParticleType type){
-    system -> initPos = initPos;
-    system -> initVel = initVel;
-    system -> maxLife = lifeSpan;
-    system -> rate = rate;
-    system -> size = size;
-    system -> color = color;
-    system -> type = type;
-    system -> time = 0;
-    system -> particles = malloc(sizeof(Particle) * MAX_PARTICLES);
-    system -> acceleration = acceleration;
+    system->initPos = initPos;
+    system->initVel = initVel;
+    system->maxLife = lifeSpan;
+    system->rate = rate;
+    system->size = size;
+    system->color = color;
+    system->type = type;
+    system->time = 0;
+    system->particles = malloc(sizeof(Particle) * MAX_PARTICLES);
+    system->acceleration = acceleration;
     printf("particle system initialized\n");
 }
 
@@ -71,22 +71,22 @@ void initParticleSystem(ParticleSystem* system, Vector2 initPos, Vector2 initVel
 
 
 void handleParticleRect(ParticleSystem* sys, Particle* particle){
-    DrawRectangleRec(particle -> rect, particle -> color);
-    particle -> rect.x += particle -> initVel.x * deltaTime;
-    particle -> rect.y += particle -> initVel.y * deltaTime;
-    particle -> life += deltaTime;
+    DrawRectangleRec(particle->rect, particle->color);
+    particle->rect.x += particle->initVel.x * deltaTime;
+    particle->rect.y += particle->initVel.y * deltaTime;
+    particle->life += deltaTime;
 
-    particle -> initVel.x += particle -> acceleration.x * deltaTime;
-    particle -> initVel.y += particle -> acceleration.y * deltaTime;
+    particle->initVel.x += particle->acceleration.x * deltaTime;
+    particle->initVel.y += particle->acceleration.y * deltaTime;
     printf("step 1\n");
-    if(particle -> life > particle -> maxLife){
+    if(particle->life > particle->maxLife){
         printf("step 1a\n");
-        Particle lastPart = sys -> particles[sys -> particleCount - 1];
+        Particle lastPart = sys->particles[sys->particleCount - 1];
         printf("step 2a\n");
-        sys -> particles[particle -> index] = lastPart;
-        sys -> particles[sys -> particleCount - 1] = createEmptyParticle();
+        sys->particles[particle->index] = lastPart;
+        sys->particles[sys->particleCount - 1] = createEmptyParticle();
         printf("step 3\n");
-        sys -> particleCount--;
+        sys->particleCount--;
         printf("particle removed\n");
     }
     printf("particle handled\n");
@@ -95,7 +95,7 @@ void handleParticleRect(ParticleSystem* sys, Particle* particle){
 
 
 void cleanParticleSystem(ParticleSystem* system){
-    free(system -> particles);
+    free(system->particles);
 }
 
 

@@ -3,6 +3,7 @@
 #include "player.h"
 #include "utils.h"
 #include "enemyBasic.h"
+#include "enemySplitter.h"
 #include <stdio.h> 
 
 
@@ -15,6 +16,13 @@ Texture2D sniperTowerBaseTexture;
 Texture2D sniperTowerTurretTexture;
 Sound sniperSnd;
 
+
+static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy);
+static BasicEnemy targetBasicEnemy(SniperTower *tower);
+static SplitterEnemy targetSplitterEnemy(SniperTower *tower);
+
+double shortestBasicEnemyDist;
+double shortestSplitterEnemyDist;
 
 void spawnSniperTower(){
     SniperTower tower;
@@ -49,19 +57,15 @@ void handleSniperTowers(){
         if(sniperTowers[i].timer < sniperTowers[i].fireRate - 0.5){
             continue;
         }
-        sniperTowers[i].shortestDist = 1000000;
-        Enemy closestEnemy;
-        for(int j = 0; j < MAX_ENEMIES; j++){
-            if(ENEMIES[j].alive == false){
-                break;
-            }
-            double distanceToEnemy = distance((Vector2){sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2, sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2},
-                                              (Vector2){ENEMIES[j].pos.x, ENEMIES[j].pos.y});
-            if(distanceToEnemy < sniperTowers[i].shortestDist){
-                sniperTowers[i].shortestDist = distanceToEnemy;
-                closestEnemy = ENEMIES[j];
-            }
-        }
+        BasicEnemy closestBasicEnemy = targetBasicEnemy(&sniperTowers[i]);
+        SplitterEnemy closestSplitterEnemy = targetSplitterEnemy(&sniperTowers[i]);
+
+        GeneralEnemy closestEnemy = compareEnemyDistances(&sniperTowers[i], closestBasicEnemy, closestSplitterEnemy);
+        
+
+
+
+
         if(sniperTowers[i].shortestDist > sniperTowers[i].range){
             continue;
         }
@@ -70,6 +74,7 @@ void handleSniperTowers(){
             closestEnemy.pos.x += cos(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
             closestEnemy.pos.y += sin(closestEnemy.direction) * framesToEnemy * deltaTime * closestEnemy.speed;
         }
+
         angleBetweenEnemy = atan2(closestEnemy.pos.y - (sniperTowers[i].rect.y + sniperTowers[i].rect.height / 2), closestEnemy.pos.x - (sniperTowers[i].rect.x + sniperTowers[i].rect.width / 2));
 
         //DrawLine(sniperTowers[i].rect.x + 25, sniperTowers[i].rect.y + 25, closestEnemy.pos.x, closestEnemy.pos.y, (Color){255, 0, 0, 255});
@@ -114,7 +119,58 @@ void handleSniperTowerGUI(){
         }
     }
     if(dist < 100){
-        // draw a green rectangle above the tower
         DrawRectangle(closestTower.rect.x, closestTower.rect.y - 50, 50, 50, (Color){0, 255, 0, 255});
     }
 }
+
+
+static BasicEnemy targetBasicEnemy(SniperTower* tower){
+    BasicEnemy closestEnemy;
+    double shortestDist = 9999999;
+    for(int j = 0; j < enemyCountBasic; j++){
+        double distanceToEnemy = distance((Vector2){tower->rect.x + (tower->rect.width / 2), tower->rect.y + (tower->rect.height / 2)},
+                                          (Vector2){BasicEnemies[j].pos.x, BasicEnemies[j].pos.y});
+        if(distanceToEnemy < shortestDist){
+            shortestDist = distanceToEnemy;
+            closestEnemy = BasicEnemies[j];
+        }
+    }
+    shortestBasicEnemyDist = shortestDist;
+    return closestEnemy;
+}
+
+static SplitterEnemy targetSplitterEnemy(SniperTower* tower){
+    SplitterEnemy closestEnemy;
+    double shortestDist = 9999999;
+    for(int j = 0; j < enemyCountSplitter; j++){
+        double distanceToEnemy = distance((Vector2){tower->rect.x + (tower->rect.width / 2), tower->rect.y + (tower->rect.height / 2)},
+                                          (Vector2){SplitterEnemies[j].pos.x, SplitterEnemies[j].pos.y});
+        if(distanceToEnemy < shortestDist){
+            shortestDist = distanceToEnemy;
+            closestEnemy = SplitterEnemies[j];
+        }
+    }
+    shortestSplitterEnemyDist = shortestDist;
+    return closestEnemy;
+}
+
+
+
+
+static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy){
+    GeneralEnemy closestEnemy;
+    if(shortestBasicEnemyDist < shortestSplitterEnemyDist){
+        closestEnemy.direction = basicEnemy.direction;
+        closestEnemy.pos = basicEnemy.pos;
+        closestEnemy.speed = basicEnemy.speed;
+        tower->shortestDist = shortestBasicEnemyDist;
+    }
+    else{
+        closestEnemy.direction = splitterEnemy.direction;
+        closestEnemy.pos = splitterEnemy.pos;
+        closestEnemy.speed = splitterEnemy.speed;
+        tower->shortestDist = shortestSplitterEnemyDist;
+    }
+    return closestEnemy;
+}
+

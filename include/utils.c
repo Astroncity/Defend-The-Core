@@ -14,15 +14,15 @@ void rotateVector2(Vector2* vector, float angle, Vector2 center){
     float s = sin(angle);
     float c = cos(angle);
 
-    vector -> x -= center.x;
-    vector -> y -= center.y;
+    vector->x -= center.x;
+    vector->y -= center.y;
 
     // rotate point
-    float xnew = vector -> x * c - vector -> y * s;
-    float ynew = vector -> x * s + vector -> y * c;
+    float xnew = vector->x * c - vector->y * s;
+    float ynew = vector->x * s + vector->y * c;
 
-    vector -> x = xnew + center.x;
-    vector -> y = ynew + center.y;
+    vector->x = xnew + center.x;
+    vector->y = ynew + center.y;
 }
 
 double degToRad(double angle){
@@ -33,12 +33,12 @@ double radToDeg(double angle){
 }
 
 void translateTrig(Trig* trig, double x, double y){
-    trig -> a.x += x;
-    trig -> a.y += y;
-    trig -> b.x += x;
-    trig -> b.y += y;
-    trig -> c.x += x;
-    trig -> c.y += y;
+    trig->a.x += x;
+    trig->a.y += y;
+    trig->b.x += x;
+    trig->b.y += y;
+    trig->c.x += x;
+    trig->c.y += y;
 }
 
 void clamp(double* value, double max){
