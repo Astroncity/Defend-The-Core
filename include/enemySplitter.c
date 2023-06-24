@@ -8,7 +8,7 @@
 SplitterEnemy SplitterEnemies[MAX_SPLITTER_ENEMIES];
 int enemyCountSplitter = 0;
 double spawnTimerSplitter = 0;
-int splitterTextureRadius = 18 * 2;
+int splitterTextureRadius = 36;
 Texture2D splitterEnemyTexture;
 
 
@@ -103,7 +103,8 @@ void handleSplitterEnemies(){
             destroySplitterEnemy(i);
         }
         //DrawCircle(SplitterEnemies[i].pos.x, SplitterEnemies[i].pos.y, splitterTextureRadius, SplitterEnemies[i].color);
-        DrawTextureEx(splitterEnemyTexture, (Vector2){SplitterEnemies[i].pos.x, SplitterEnemies[i].pos.y}, 0, SplitterEnemies[i].radius / 18, WHITE);
+        DrawTextureEx(splitterEnemyTexture, (Vector2){SplitterEnemies[i].pos.x - (SplitterEnemies[i].radius / 2), SplitterEnemies[i].pos.y - (SplitterEnemies[i].radius / 2)}, 0, SplitterEnemies[i].radius / 18, WHITE);
+        DrawCircle(SplitterEnemies[i].pos.x, SplitterEnemies[i].pos.y, SplitterEnemies[i].radius / 2, (Color){75, 0, 130, 128});
         DrawRectangle(SplitterEnemies[i].healthBar.rect.x, SplitterEnemies[i].healthBar.rect.y,
                   SplitterEnemies[i].healthBar.rect.width, SplitterEnemies[i].healthBar.rect.height, SplitterEnemies[i].healthBar.backgroundColor);
         DrawRectangle(SplitterEnemies[i].healthBar.rect.x, SplitterEnemies[i].healthBar.rect.y,
@@ -119,11 +120,11 @@ static void split(SplitterEnemy* parent, int dir){
     switch(dir){
         case 0:
             child.pos.x = parent->pos.x;
-            child.pos.y = parent->pos.y + 20;
+            child.pos.y = parent->pos.y + 32;
             break;
         case 1:
             child.pos.x = parent->pos.x;
-            child.pos.y = parent->pos.y - 20;
+            child.pos.y = parent->pos.y - 32;
             break;
     }
 
@@ -136,10 +137,12 @@ static void split(SplitterEnemy* parent, int dir){
     child.health = parent -> maxHealth * SPLITTER_SPLIT_FACTOR;
     child.maxHealth = parent -> maxHealth * SPLITTER_SPLIT_FACTOR;
     child.splits = parent->splits + 1;
-    child.radius = splitterTextureRadius - (child.splits);
+    child.radius = parent -> radius;
+    child.direction = parent->direction;
     
     child.healthBar = (HealthBar){child.health, child.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, RED, BLACK};
     SplitterEnemies[enemyCountSplitter] = child;
+    printf("%d\n", child.radius);
 
     enemyCountSplitter++;
 }
