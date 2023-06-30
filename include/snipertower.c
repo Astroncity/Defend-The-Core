@@ -4,6 +4,7 @@
 #include "utils.h"
 #include "enemyBasic.h"
 #include "enemySplitter.h"
+#include "enemyShield.h"
 #include <stdio.h> 
 
 
@@ -129,10 +130,10 @@ static BasicEnemy targetBasicEnemy(SniperTower* tower){
     double shortestDist = 9999999;
     for(int j = 0; j < enemyCountBasic; j++){
         double distanceToEnemy = distance((Vector2){tower->rect.x + (tower->rect.width / 2), tower->rect.y + (tower->rect.height / 2)},
-                                          (Vector2){BasicEnemies[j].pos.x, BasicEnemies[j].pos.y});
+                                          (Vector2){basicEnemies[j].pos.x, basicEnemies[j].pos.y});
         if(distanceToEnemy < shortestDist){
             shortestDist = distanceToEnemy;
-            closestEnemy = BasicEnemies[j];
+            closestEnemy = basicEnemies[j];
         }
     }
     shortestBasicEnemyDist = shortestDist;
@@ -144,10 +145,10 @@ static SplitterEnemy targetSplitterEnemy(SniperTower* tower){
     double shortestDist = 9999999;
     for(int j = 0; j < enemyCountSplitter; j++){
         double distanceToEnemy = distance((Vector2){tower->rect.x + (tower->rect.width / 2), tower->rect.y + (tower->rect.height / 2)},
-                                          (Vector2){SplitterEnemies[j].pos.x, SplitterEnemies[j].pos.y});
+                                          (Vector2){splitterEnemies[j].pos.x, splitterEnemies[j].pos.y});
         if(distanceToEnemy < shortestDist){
             shortestDist = distanceToEnemy;
-            closestEnemy = SplitterEnemies[j];
+            closestEnemy = splitterEnemies[j];
         }
     }
     shortestSplitterEnemyDist = shortestDist;

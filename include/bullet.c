@@ -2,6 +2,7 @@
 #include "player.h"
 #include "enemyBasic.h"
 #include "enemySplitter.h"
+#include "enemyShield.h"
 #include <stdio.h> 
 
 
@@ -15,6 +16,7 @@ Rectangle bulletTextureSource = {0, 0, 16, 16};
 
 static void checkCollisionBasic(Bullet bullet);
 static void checkCollisionSplitter(Bullet bullet);
+static void checkCollisionShield(Bullet bullet);
 
 void shootBasic(Vector2 center, double angleBetweenMouse){
     bool canShoot = true;
@@ -107,6 +109,7 @@ void handleBullets(){
 
         checkCollisionBasic(bullets[i]);
         checkCollisionSplitter(bullets[i]);
+        checkCollisionShield(bullets[i]);
         
     }
 }
@@ -115,8 +118,8 @@ void handleBullets(){
 
 static void checkCollisionBasic(Bullet bullet){
     for(int j = 0; j < enemyCountBasic; j++){
-        if(CheckCollisionCircles(BasicEnemies[j].pos, 10, bullet.pos, bullet.size)){
-            BasicEnemies[j].health -= bullet.damage;
+        if(CheckCollisionCircles(basicEnemies[j].pos, 10, bullet.pos, bullet.size)){
+            basicEnemies[j].health -= bullet.damage;
             destroyBullet(bullet.index);
         }
     }
@@ -125,8 +128,21 @@ static void checkCollisionBasic(Bullet bullet){
 
 static void checkCollisionSplitter(Bullet bullet){
     for(int j = 0; j < enemyCountSplitter; j++){
-        if(CheckCollisionCircles(SplitterEnemies[j].pos, 10, bullet.pos, bullet.size)){
-            SplitterEnemies[j].health -= bullet.damage;
+        if(CheckCollisionCircles(splitterEnemies[j].pos, 10, bullet.pos, bullet.size)){
+            splitterEnemies[j].health -= bullet.damage;
+            destroyBullet(bullet.index);
+        }
+    }
+}
+
+static void checkCollisionShield(Bullet bullet){
+    for(int j = 0; j < enemyCountShield; j++){
+        if(CheckCollisionCircles(shieldEnemies[j].pos, 10, bullet.pos, bullet.size)){
+            shieldEnemies[j].health -= bullet.damage;
+            destroyBullet(bullet.index);
+        }
+        if(CheckCollisionCircleRec(bullet.pos, bullet.size, (Rectangle){shieldEnemies[j].pos.x - 10, shieldEnemies[j].pos.y - 10, shieldEnemyShieldTexture.width, shieldEnemyShieldTexture.height}) && shieldEnemies[j].shieldActive){
+            shieldEnemies[j].shieldHealth -= bullet.damage;
             destroyBullet(bullet.index);
         }
     }

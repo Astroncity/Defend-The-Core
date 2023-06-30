@@ -6,7 +6,7 @@
 
 
 
-BasicEnemy BasicEnemies[MAX_BASIC_ENEMIES];
+BasicEnemy basicEnemies[MAX_BASIC_ENEMIES];
 int enemyCountBasic = 0;
 double spawnTimerBasic = 0;
 
@@ -55,7 +55,7 @@ void spawnBasicEnemies(){
             enemy.coinValue *= 2;
         }
 
-        BasicEnemies[enemyCountBasic] = enemy;
+        basicEnemies[enemyCountBasic] = enemy;
         spawnTimerBasic = 0;
         //printf("Spawned enemy at %f, %f\n", enemy.pos.x, enemy.pos.y);
         enemyCountBasic++;
@@ -66,45 +66,45 @@ void spawnBasicEnemies(){
 void handleBasicEnemies(){
     spawnTimerBasic += GetFrameTime();
     for(int i = 0; i < MAX_BASIC_ENEMIES; i++){
-        if(BasicEnemies[i].alive == false){
+        if(basicEnemies[i].alive == false){
             break;
         }
-        if(BasicEnemies[i].health <= 0){
-            player.coins += BasicEnemies[i].coinValue;
+        if(basicEnemies[i].health <= 0){
+            player.coins += basicEnemies[i].coinValue;
             destroyBasicEnemy(i);
         }
 
 
-        double angleBetweenCore = atan2(core.rect.y + core.rect.height / 2 - BasicEnemies[i].pos.y, core.rect.x + core.rect.width / 2 - BasicEnemies[i].pos.x);
+        double angleBetweenCore = atan2(core.rect.y + core.rect.height / 2 - basicEnemies[i].pos.y, core.rect.x + core.rect.width / 2 - basicEnemies[i].pos.x);
         if(angleBetweenCore < 0){
             angleBetweenCore += 2 * PI;
         }
         else if(angleBetweenCore > 2 * PI){
             angleBetweenCore -= 2 * PI;
         }
-        BasicEnemies[i].direction = angleBetweenCore;
+        basicEnemies[i].direction = angleBetweenCore;
 
 
-        BasicEnemies[i].pos.x += cos(angleBetweenCore) * BasicEnemies[i].speed * deltaTime;
-        BasicEnemies[i].pos.y += sin(angleBetweenCore) * BasicEnemies[i].speed * deltaTime;
+        basicEnemies[i].pos.x += cos(angleBetweenCore) * basicEnemies[i].speed * deltaTime;
+        basicEnemies[i].pos.y += sin(angleBetweenCore) * basicEnemies[i].speed * deltaTime;
 
-        BasicEnemies[i].healthBar.rect.x = BasicEnemies[i].pos.x - BasicEnemies[i].radius - BasicEnemies[i].healthBar.rect.width / 2;
-        BasicEnemies[i].healthBar.rect.y = BasicEnemies[i].pos.y - BasicEnemies[i].radius - BasicEnemies[i].healthBar.rect.height / 2;
+        basicEnemies[i].healthBar.rect.x = basicEnemies[i].pos.x - basicEnemies[i].radius - basicEnemies[i].healthBar.rect.width / 2;
+        basicEnemies[i].healthBar.rect.y = basicEnemies[i].pos.y - basicEnemies[i].radius - basicEnemies[i].healthBar.rect.height / 2;
 
-        if (CheckCollisionCircleRec(BasicEnemies[i].pos, BasicEnemies[i].radius, core.rect)){
-            core.health -= BasicEnemies[i].damage;
+        if (CheckCollisionCircleRec(basicEnemies[i].pos, basicEnemies[i].radius, core.rect)){
+            core.health -= basicEnemies[i].damage;
             printf("Core health: %f\n", core.health);
             destroyBasicEnemy(i);
         }
-        if (CheckCollisionCircleRec(BasicEnemies[i].pos, BasicEnemies[i].radius, player.hitbox)){
-            player.health -= BasicEnemies[i].damage;
+        if (CheckCollisionCircleRec(basicEnemies[i].pos, basicEnemies[i].radius, player.hitbox)){
+            player.health -= basicEnemies[i].damage;
             destroyBasicEnemy(i);
         }
-        DrawCircle(BasicEnemies[i].pos.x, BasicEnemies[i].pos.y, BasicEnemies[i].radius, BasicEnemies[i].color);
-        DrawRectangle(BasicEnemies[i].healthBar.rect.x, BasicEnemies[i].healthBar.rect.y,
-                  BasicEnemies[i].healthBar.rect.width, BasicEnemies[i].healthBar.rect.height, BasicEnemies[i].healthBar.backgroundColor);
-        DrawRectangle(BasicEnemies[i].healthBar.rect.x, BasicEnemies[i].healthBar.rect.y,
-                  BasicEnemies[i].healthBar.rect.width * (BasicEnemies[i].health / BasicEnemies[i].maxHealth), BasicEnemies[i].healthBar.rect.height, BasicEnemies[i].healthBar.barColor);
+        DrawCircle(basicEnemies[i].pos.x, basicEnemies[i].pos.y, basicEnemies[i].radius, basicEnemies[i].color);
+        DrawRectangle(basicEnemies[i].healthBar.rect.x, basicEnemies[i].healthBar.rect.y,
+                  basicEnemies[i].healthBar.rect.width, basicEnemies[i].healthBar.rect.height, basicEnemies[i].healthBar.backgroundColor);
+        DrawRectangle(basicEnemies[i].healthBar.rect.x, basicEnemies[i].healthBar.rect.y,
+                  basicEnemies[i].healthBar.rect.width * (basicEnemies[i].health / basicEnemies[i].maxHealth), basicEnemies[i].healthBar.rect.height, basicEnemies[i].healthBar.barColor);
     }
 }
 
@@ -115,10 +115,10 @@ void destroyBasicEnemy(int enemyIndex){
         printf("Add more memory dumbass, enemy array full");
         return;
     }
-    BasicEnemy enemyCP = BasicEnemies[lastUsedSlot];
+    BasicEnemy enemyCP = basicEnemies[lastUsedSlot];
     enemyCP.index = enemyIndex;
     enemyCP.alive = true;
-    BasicEnemies[enemyIndex] = enemyCP;
-    BasicEnemies[lastUsedSlot] = (BasicEnemy){(Vector2){0, 0}, 0, 0, 0, 0, (Color){0, 0, 0, 0}, false};
+    basicEnemies[enemyIndex] = enemyCP;
+    basicEnemies[lastUsedSlot] = (BasicEnemy){(Vector2){0, 0}, 0, 0, 0, 0, (Color){0, 0, 0, 0}, false};
     enemyCountBasic--;
 }

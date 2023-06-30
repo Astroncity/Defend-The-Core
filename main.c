@@ -9,6 +9,7 @@
 #include "player.h"
 #include "enemyBasic.h"
 #include "enemySplitter.h"
+#include "enemyShield.h"
 #include "particleSystem.h"
 #include "core.h"
 #include <math.h>
@@ -30,13 +31,15 @@
 
 
 
-/**----------------------------------------------
- * todo                  TODO
- * todo Refactor shit
- * todo move functions into c files using extern vars
- * todo i.e player.c enemy.c snipertower.c etc
- * todo write down plan in notebook
- *---------------------------------------------**/
+
+
+//! Fix snipertower targetting onto shield enemy
+//! Fix shield enemy in general
+
+
+
+
+
 
 
 
@@ -180,8 +183,10 @@ int main(void){
                 DrawTexture(backgroundTexture, 0, 0, WHITE);
                 handleBasicEnemies();
                 handleSplitterEnemies();
+                handleShieldEnemies();
                 spawnBasicEnemies();
                 spawnSplitterEnemies();
+                spawnShieldEnemies();
                 scaleDifficulty(runtime);
                 handleSniperTowers();
                 handleCore();
@@ -278,11 +283,11 @@ void resetGame(){
     core.health = core.maxHealth;
     player.center = (Vector2){screenWidth / 2, screenHeight / 2};
     for(int i = 0; i < enemyCountBasic; i++){
-        BasicEnemies[i] = (BasicEnemy){};
+        basicEnemies[i] = (BasicEnemy){};
     }
 
     for(int i = 0; i < enemyCountSplitter; i++){
-        SplitterEnemies[i] = (SplitterEnemy){};
+        splitterEnemies[i] = (SplitterEnemy){};
     }
 
     for(int i = 0; i < MAX_BULLETS; i++){
@@ -301,7 +306,7 @@ void savePlayerData(){
     strcpy(path, savesFolderPath);
     strcpy(resourcesName, "\\playerData.txt");
     file = fopen(strcat(path, resourcesName), "w");
-    fprintf(file, "%d\n", player.coins);
+    fprintf(file, "%lld\n", player.coins);
     fprintf(file, "%f\n", player.damage);
     fprintf(file, "%f\n", player.maxHealth);
     fprintf(file, "%d\n", shotgunPurchased);
@@ -329,7 +334,7 @@ void loadPlayerData(){
     if((file = fopen(path, "r")) != NULL)
         {
             firstTime = false;
-            fscanf(file, "%d\n", &player.coins);
+            fscanf(file, "%lld\n", &player.coins);
             fscanf(file, "%lf\n", &player.damage);
             fscanf(file, "%lf\n", &player.maxHealth);
             fscanf(file, "%d\n", &tempBool);
@@ -696,4 +701,6 @@ void loadTextures(){
     sniperTowerBaseTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerBaseImage, sizeof(sniperTowerBaseImage)));
     sniperTowerTurretTexture = LoadTextureFromImage(LoadImageFromMemory(".png", sniperTowerTurretImage, sizeof(sniperTowerTurretImage)));
     splitterEnemyTexture = LoadTextureFromImage(LoadImageFromMemory(".png", enemySplitterImage, sizeof(enemySplitterImage)));
+    shieldEnemyTexture = LoadTextureFromImage(LoadImageFromMemory(".png", enemyShieldImage, sizeof(enemyShieldImage))); 
+    shieldEnemyShieldTexture = LoadTextureFromImage(LoadImageFromMemory(".png", enemyShieldShieldImage, sizeof(enemyShieldShieldImage)));
 }

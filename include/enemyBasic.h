@@ -21,7 +21,7 @@ typedef struct BasicEnemy{
 }BasicEnemy;
 
 
-extern BasicEnemy BasicEnemies[MAX_BASIC_ENEMIES];
+extern BasicEnemy basicEnemies[MAX_BASIC_ENEMIES];
 extern int enemyCountBasic;
 extern double spawnTimerBasic;
 

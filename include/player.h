@@ -4,7 +4,7 @@
 #include "raylib.h"
 #include "utils.h"
 #include "gui.h"
-
+#include "inttypes.h"
 
 typedef struct Player{
     double health;
@@ -13,7 +13,7 @@ typedef struct Player{
     double damage;
     double attackSpeed;
     double direction;
-    int coins;
+    uint64_t coins;
     Trig trig;
     HealthBar healthBar;
     Vector2 center;

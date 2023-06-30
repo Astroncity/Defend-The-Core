@@ -5,7 +5,7 @@
 #include <stdio.h> 
 
 
-SplitterEnemy SplitterEnemies[MAX_SPLITTER_ENEMIES];
+SplitterEnemy splitterEnemies[MAX_SPLITTER_ENEMIES];
 int enemyCountSplitter = 0;
 double spawnTimerSplitter = 0;
 int splitterTextureRadius = 36;
@@ -53,7 +53,7 @@ void spawnSplitterEnemies(){
         
         enemy.healthBar = (HealthBar){enemy.health, enemy.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, RED, BLACK};
 
-        SplitterEnemies[enemyCountSplitter] = enemy;
+        splitterEnemies[enemyCountSplitter] = enemy;
         spawnTimerSplitter = 0;
         //printf("Spawned enemy at %f, %f\n", enemy.pos.x, enemy.pos.y);
         enemyCountSplitter++;
@@ -64,51 +64,51 @@ void spawnSplitterEnemies(){
 void handleSplitterEnemies(){
     spawnTimerSplitter += GetFrameTime();
     for(int i = 0; i < MAX_SPLITTER_ENEMIES; i++){
-        if(SplitterEnemies[i].alive == false){
+        if(splitterEnemies[i].alive == false){
             break;
         }
-        if(SplitterEnemies[i].health <= 0){
-            player.coins += SplitterEnemies[i].coinValue;
-            if(SplitterEnemies[i].splits < SPLITTER_MAX_SPLITS){
-                split(&SplitterEnemies[i], 0);
-                split(&SplitterEnemies[i], 1);
+        if(splitterEnemies[i].health <= 0){
+            player.coins += splitterEnemies[i].coinValue;
+            if(splitterEnemies[i].splits < SPLITTER_MAX_SPLITS){
+                split(&splitterEnemies[i], 0);
+                split(&splitterEnemies[i], 1);
             }
             destroySplitterEnemy(i);
         }
 
 
-        double angleBetweenCore = atan2(core.rect.y + core.rect.height / 2 - SplitterEnemies[i].pos.y, core.rect.x + core.rect.width / 2 - SplitterEnemies[i].pos.x);
+        double angleBetweenCore = atan2(core.rect.y + core.rect.height / 2 - splitterEnemies[i].pos.y, core.rect.x + core.rect.width / 2 - splitterEnemies[i].pos.x);
         if(angleBetweenCore < 0){
             angleBetweenCore += 2 * PI;
         }
         else if(angleBetweenCore > 2 * PI){
             angleBetweenCore -= 2 * PI;
         }
-        SplitterEnemies[i].direction = angleBetweenCore;
+        splitterEnemies[i].direction = angleBetweenCore;
 
 
-        SplitterEnemies[i].pos.x += cos(angleBetweenCore) * SplitterEnemies[i].speed * deltaTime;
-        SplitterEnemies[i].pos.y += sin(angleBetweenCore) * SplitterEnemies[i].speed * deltaTime;
+        splitterEnemies[i].pos.x += cos(angleBetweenCore) * splitterEnemies[i].speed * deltaTime;
+        splitterEnemies[i].pos.y += sin(angleBetweenCore) * splitterEnemies[i].speed * deltaTime;
 
-        SplitterEnemies[i].healthBar.rect.x = SplitterEnemies[i].pos.x - splitterTextureRadius - SplitterEnemies[i].healthBar.rect.width / 2;
-        SplitterEnemies[i].healthBar.rect.y = SplitterEnemies[i].pos.y - splitterTextureRadius - SplitterEnemies[i].healthBar.rect.height / 2;
+        splitterEnemies[i].healthBar.rect.x = splitterEnemies[i].pos.x - splitterTextureRadius - splitterEnemies[i].healthBar.rect.width / 2;
+        splitterEnemies[i].healthBar.rect.y = splitterEnemies[i].pos.y - splitterTextureRadius - splitterEnemies[i].healthBar.rect.height / 2;
 
-        if (CheckCollisionCircleRec(SplitterEnemies[i].pos, splitterTextureRadius, core.rect)){
-            core.health -= SplitterEnemies[i].damage;
+        if (CheckCollisionCircleRec(splitterEnemies[i].pos, splitterTextureRadius, core.rect)){
+            core.health -= splitterEnemies[i].damage;
             printf("Core health: %f\n", core.health);
             destroySplitterEnemy(i);
         }
-        if (CheckCollisionCircleRec(SplitterEnemies[i].pos, splitterTextureRadius, player.hitbox)){
-            player.health -= SplitterEnemies[i].damage;
+        if (CheckCollisionCircleRec(splitterEnemies[i].pos, splitterTextureRadius, player.hitbox)){
+            player.health -= splitterEnemies[i].damage;
             destroySplitterEnemy(i);
         }
-        //DrawCircle(SplitterEnemies[i].pos.x, SplitterEnemies[i].pos.y, splitterTextureRadius, SplitterEnemies[i].color);
-        DrawTextureEx(splitterEnemyTexture, (Vector2){SplitterEnemies[i].pos.x - (SplitterEnemies[i].radius / 2), SplitterEnemies[i].pos.y - (SplitterEnemies[i].radius / 2)}, 0, SplitterEnemies[i].radius / 18, WHITE);
-        DrawCircle(SplitterEnemies[i].pos.x, SplitterEnemies[i].pos.y, SplitterEnemies[i].radius / 2, (Color){75, 0, 130, 128});
-        DrawRectangle(SplitterEnemies[i].healthBar.rect.x, SplitterEnemies[i].healthBar.rect.y,
-                  SplitterEnemies[i].healthBar.rect.width, SplitterEnemies[i].healthBar.rect.height, SplitterEnemies[i].healthBar.backgroundColor);
-        DrawRectangle(SplitterEnemies[i].healthBar.rect.x, SplitterEnemies[i].healthBar.rect.y,
-                  SplitterEnemies[i].healthBar.rect.width * (SplitterEnemies[i].health / SplitterEnemies[i].maxHealth), SplitterEnemies[i].healthBar.rect.height, SplitterEnemies[i].healthBar.barColor);
+        //DrawCircle(splitterEnemies[i].pos.x, splitterEnemies[i].pos.y, splitterTextureRadius, splitterEnemies[i].color);
+        DrawTextureEx(splitterEnemyTexture, (Vector2){splitterEnemies[i].pos.x - (splitterEnemies[i].radius / 2), splitterEnemies[i].pos.y - (splitterEnemies[i].radius / 2)}, 0, splitterEnemies[i].radius / 18, WHITE);
+        //DrawCircle(splitterEnemies[i].pos.x, splitterEnemies[i].pos.y, splitterEnemies[i].radius / 2, (Color){75, 0, 130, 128});
+        DrawRectangle(splitterEnemies[i].healthBar.rect.x, splitterEnemies[i].healthBar.rect.y,
+                  splitterEnemies[i].healthBar.rect.width, splitterEnemies[i].healthBar.rect.height, splitterEnemies[i].healthBar.backgroundColor);
+        DrawRectangle(splitterEnemies[i].healthBar.rect.x, splitterEnemies[i].healthBar.rect.y,
+                  splitterEnemies[i].healthBar.rect.width * (splitterEnemies[i].health / splitterEnemies[i].maxHealth), splitterEnemies[i].healthBar.rect.height, splitterEnemies[i].healthBar.barColor);
     }
 }
 
@@ -141,7 +141,7 @@ static void split(SplitterEnemy* parent, int dir){
     child.direction = parent->direction;
     
     child.healthBar = (HealthBar){child.health, child.maxHealth, (Rectangle){screenWidth / 2 - 16, screenHeight / 2 + 64, 128, 4}, RED, BLACK};
-    SplitterEnemies[enemyCountSplitter] = child;
+    splitterEnemies[enemyCountSplitter] = child;
     printf("%d\n", child.radius);
 
     enemyCountSplitter++;
@@ -155,10 +155,10 @@ void destroySplitterEnemy(int enemyIndex){
         printf("Add more memory dumbass, enemy array full");
         return;
     }
-    SplitterEnemy enemyCP = SplitterEnemies[lastUsedSlot];
+    SplitterEnemy enemyCP = splitterEnemies[lastUsedSlot];
     enemyCP.index = enemyIndex;
     enemyCP.alive = true;
-    SplitterEnemies[enemyIndex] = enemyCP;
-    SplitterEnemies[lastUsedSlot] = (SplitterEnemy){};
+    splitterEnemies[enemyIndex] = enemyCP;
+    splitterEnemies[lastUsedSlot] = (SplitterEnemy){};
     enemyCountSplitter--;
 }

@@ -24,7 +24,7 @@ typedef struct SplitterEnemy{
 }SplitterEnemy;
 
 
-extern SplitterEnemy SplitterEnemies[MAX_SPLITTER_ENEMIES];
+extern SplitterEnemy splitterEnemies[MAX_SPLITTER_ENEMIES];
 extern int enemyCountSplitter;
 extern double spawnTimerSplitter;
 extern Texture2D splitterEnemyTexture;
