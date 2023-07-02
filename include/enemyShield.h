@@ -20,6 +20,8 @@ typedef struct ShieldEnemy{
     double shieldHealth;
     double shieldMaxHealth;
     bool shieldActive;
+    Rectangle shieldRect;
+    Vector2* shieldRectPoints;
 }ShieldEnemy;
 
 

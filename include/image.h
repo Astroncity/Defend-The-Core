@@ -19,7 +19,7 @@ extern unsigned char upgradeButtonImage[709];
 extern unsigned char coreImage[469];
 extern unsigned char logoImage[10783];
 extern unsigned char enemySplitterImage[446];
-extern unsigned char enemyShieldShieldImage[314];
+extern unsigned char enemyShieldShieldImage[263];
 extern unsigned char enemyShieldImage[425];
 
 #endif /*IMAGE_H*/

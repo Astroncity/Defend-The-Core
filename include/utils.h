@@ -38,5 +38,12 @@ int roundToNearestMutiple(int num, int mul);
 void clamp(double* value, double max);
 void drawGrid();
 Vector2 vector2Clamp(Vector2 v, Vector2 min, Vector2 max);
+Vector2 subtractVector2(Vector2 x, Vector2 y);
+Vector2* rotateRect(Rectangle rect, double angle, Vector2 center);
+double dotProductVector2(Vector2 v1, Vector2 v2);
+Vector2 normalizeVector2(Vector2 v);
+Vector2 perpendicularVector2(Vector2 v);
+bool circleRectCollision(Vector2 circlePos, double circleRadius, Vector2 points[], double angle);
+Vector2 midPoint(Vector2 v1, Vector2 v2);
 
 #endif /*UTILS_H*/

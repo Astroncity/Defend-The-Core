@@ -28,25 +28,6 @@
 #define MAX(a, b) ((a)>(b)? (a) : (b))
 #define MIN(a, b) ((a)<(b)? (a) : (b))
 
-
-
-
-
-
-//! Fix snipertower targetting onto shield enemy
-//! Fix shield enemy in general
-
-
-
-
-
-
-
-
-
-
-
-
 // UI things
 Button playButton;
 Texture2D playButtonTexture;
@@ -94,7 +75,6 @@ bool f11Down = false;
 
 
 
-
 ParticleSystem testSys;
 Shader shader;
 int main(void){
@@ -116,7 +96,6 @@ int main(void){
     strcat(fontpath, "\\propaganda.ttf");
     loadPlayerData();  
     printf("reached 2");
-    shader = LoadShader(0, TextFormat("glow.frag", GLSL_VERSION));
     //shootSnd = LoadSound("sounds/fire.wav");
     //selectSnd = LoadSound("sounds/selectSnd.wav");
     //upgradeSnd = LoadSound("sounds/upgradeSnd.wav");
@@ -124,7 +103,7 @@ int main(void){
     //shotgunSnd = LoadSound("sounds/shotgun.wav");
     //sniperSnd = LoadSound("sounds/sniper.wav");
     //propagandaFont = LoadFont(fontpath);
-    printf("%s", fontpath);
+    ///printf("%s", fontpath);
 
     initMainMenu();
     initStoreMenu();
@@ -293,8 +272,12 @@ void resetGame(){
     for(int i = 0; i < MAX_BULLETS; i++){
         bullets[i] = (Bullet){};
     }
+    for(int i = 0; i < MAX_SHIELD_ENEMIES; i++){
+        shieldEnemies[i] = (ShieldEnemy){};
+    }
     enemyCountBasic = 0;
     enemyCountSplitter = 0;
+    enemyCountShield = 0;
     bulletCount = 0;
     difficulty = 1;
 }

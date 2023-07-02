@@ -141,9 +141,13 @@ static void checkCollisionShield(Bullet bullet){
             shieldEnemies[j].health -= bullet.damage;
             destroyBullet(bullet.index);
         }
-        if(CheckCollisionCircleRec(bullet.pos, bullet.size, (Rectangle){shieldEnemies[j].pos.x - 10, shieldEnemies[j].pos.y - 10, shieldEnemyShieldTexture.width, shieldEnemyShieldTexture.height}) && shieldEnemies[j].shieldActive){
-            shieldEnemies[j].shieldHealth -= bullet.damage;
-            destroyBullet(bullet.index);
+        if(shieldEnemies[j].shieldActive){
+            bool hit = circleRectCollision(bullet.pos, bullet.size, shieldEnemies[j].shieldRectPoints, bullet.direction);
+            if(hit){
+                shieldEnemies[j].shieldHealth -= bullet.damage;
+                destroyBullet(bullet.index);
+                printf("hit shield\n");
+            }
         }
     }
 }

@@ -18,12 +18,12 @@ Texture2D sniperTowerTurretTexture;
 Sound sniperSnd;
 
 
-static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy);
+static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy, ShieldEnemy shieldEnemy);
 static BasicEnemy targetBasicEnemy(SniperTower *tower);
 static SplitterEnemy targetSplitterEnemy(SniperTower *tower);
+static ShieldEnemy targetShieldEnemy(SniperTower *tower);
 
-double shortestBasicEnemyDist;
-double shortestSplitterEnemyDist;
+double distances[10];
 
 void spawnSniperTower(){
     SniperTower tower;
@@ -60,8 +60,9 @@ void handleSniperTowers(){
         }
         BasicEnemy closestBasicEnemy = targetBasicEnemy(&sniperTowers[i]);
         SplitterEnemy closestSplitterEnemy = targetSplitterEnemy(&sniperTowers[i]);
+        ShieldEnemy closestShieldEnemy = targetShieldEnemy(&sniperTowers[i]);
 
-        GeneralEnemy closestEnemy = compareEnemyDistances(&sniperTowers[i], closestBasicEnemy, closestSplitterEnemy);
+        GeneralEnemy closestEnemy = compareEnemyDistances(&sniperTowers[i], closestBasicEnemy, closestSplitterEnemy, closestShieldEnemy);
         
 
 
@@ -136,7 +137,7 @@ static BasicEnemy targetBasicEnemy(SniperTower* tower){
             closestEnemy = basicEnemies[j];
         }
     }
-    shortestBasicEnemyDist = shortestDist;
+    distances[0] = shortestDist;
     return closestEnemy;
 }
 
@@ -151,26 +152,51 @@ static SplitterEnemy targetSplitterEnemy(SniperTower* tower){
             closestEnemy = splitterEnemies[j];
         }
     }
-    shortestSplitterEnemyDist = shortestDist;
+    distances[1] = shortestDist;
+    return closestEnemy;
+}
+
+static ShieldEnemy targetShieldEnemy(SniperTower* tower){
+    ShieldEnemy closestEnemy;
+    double shortestDist = 9999999;
+    for(int i = 0; i < enemyCountShield; i++){
+        double distanceToEnemy = distance((Vector2){tower->rect.x + (tower->rect.width / 2), tower->rect.y + (tower->rect.height / 2)},
+                                          (Vector2){shieldEnemies[i].pos.x, shieldEnemies[i].pos.y});
+        if(distanceToEnemy < shortestDist){
+            shortestDist = distanceToEnemy;
+            closestEnemy = shieldEnemies[i];
+        }
+    }
+    distances[2] = shortestDist;
     return closestEnemy;
 }
 
 
 
 
-static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy){
+static GeneralEnemy compareEnemyDistances(SniperTower* tower, BasicEnemy basicEnemy, SplitterEnemy splitterEnemy, ShieldEnemy shieldEnemy){
     GeneralEnemy closestEnemy;
-    if(shortestBasicEnemyDist < shortestSplitterEnemyDist){
-        closestEnemy.direction = basicEnemy.direction;
-        closestEnemy.pos = basicEnemy.pos;
-        closestEnemy.speed = basicEnemy.speed;
-        tower->shortestDist = shortestBasicEnemyDist;
+    double shortestDist = 9999999;
+    int shortestIndex = 999999;
+    for(int i = 0; i < 3; i++){
+        if(distances[i] < shortestDist){
+            shortestDist = distances[i];
+            shortestIndex = i;
+        }
     }
-    else{
-        closestEnemy.direction = splitterEnemy.direction;
-        closestEnemy.pos = splitterEnemy.pos;
-        closestEnemy.speed = splitterEnemy.speed;
-        tower->shortestDist = shortestSplitterEnemyDist;
+    switch(shortestIndex){
+        case 0:
+            closestEnemy = (GeneralEnemy){basicEnemy.pos, basicEnemy.direction, basicEnemy.speed};
+            tower->shortestDist = shortestDist;
+            break;
+        case 1:
+            closestEnemy = (GeneralEnemy){splitterEnemy.pos, splitterEnemy.direction, splitterEnemy.speed};
+            tower->shortestDist = shortestDist;
+            break;
+        case 2:
+            closestEnemy = (GeneralEnemy){shieldEnemy.pos, shieldEnemy.direction, shieldEnemy.speed};
+            tower->shortestDist = shortestDist;
+            break;
     }
     return closestEnemy;
 }
