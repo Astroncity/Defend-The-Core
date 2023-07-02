@@ -7,9 +7,7 @@
 #include "bullet.h"
 #include "font.h"
 #include "player.h"
-#include "enemyBasic.h"
-#include "enemySplitter.h"
-#include "enemyShield.h"
+#include "enemies/enemies.h"
 #include "particleSystem.h"
 #include "core.h"
 #include <math.h>
@@ -107,7 +105,7 @@ int main(void){
 
     initMainMenu();
     initStoreMenu();
-    SetExitKey(KEY_F12);
+    SetExitKey(KEY_F1); 
     if(darkMode){
         backgroundColor = BLACK;
     }

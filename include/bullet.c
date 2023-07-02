@@ -1,8 +1,6 @@
 #include "bullet.h"
 #include "player.h"
-#include "enemyBasic.h"
-#include "enemySplitter.h"
-#include "enemyShield.h"
+#include "enemies\enemies.h"
 #include <stdio.h> 
 
 

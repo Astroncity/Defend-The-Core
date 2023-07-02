@@ -2,7 +2,6 @@
 #define SNIPERTOWER_H
 
 #include "raylib.h"
-#include "enemyBasic.h"
 #define MAX_SNIPER_TOWERS 520
 
 typedef struct SniperTower{
