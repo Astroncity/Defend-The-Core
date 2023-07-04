@@ -35,7 +35,7 @@ void spawnSniperTower(){
     tower.rect.y = (double)roundToNearestMutiple(towerPosY, 64);
     tower.fireRate = 1.0f;
     tower.range = defaultSniperTowerRange;
-    tower.damage = 10.0f;
+    tower.damage = 200.0f;
     tower.level = 1;
     tower.timer = 0;
 
@@ -53,7 +53,7 @@ void handleSniperTowers(){
         DrawTexturePro(sniperTowerTurretTexture, (Rectangle){0, 0, 44, 64}, (Rectangle){sniperTowers[i].rect.x + (sniperTowers[i].rect.width / 2),
                     sniperTowers[i].rect.y + (sniperTowers[i].rect.height / 2),
                     44, 64}, (Vector2){21.5, 42.5}, radToDeg(sniperTowers[i].lastAngle) + 90, WHITE);
-        if(sniperTowers[i].timer < sniperTowers[i].fireRate - 0.5){
+        if(sniperTowers[i].timer < sniperTowers[i].fireRate){
             continue;
         }
         BasicEnemy closestBasicEnemy = targetBasicEnemy(&sniperTowers[i]);

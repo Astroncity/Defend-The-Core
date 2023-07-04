@@ -328,7 +328,7 @@ void loadPlayerData(){
                 sniperTowers[i].rect.width = 64;
                 sniperTowers[i].rect.height = 64;
                 sniperTowers[i].level = tmpLevel;
-                sniperTowers[i].damage = 10 * tmpLevel;
+                sniperTowers[i].damage = 200 * tmpLevel;
                 sniperTowers[i].fireRate = 1 - ((tmpLevel - 1) *0.05);
                 sniperTowers[i].range = defaultSniperTowerRange + ((tmpLevel - 1) * 50);
 
